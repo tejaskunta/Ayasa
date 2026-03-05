@@ -704,3 +704,133 @@ body {
     padding: 1rem;
   }
 }
+
+/* ── Gemini API Key Settings Card ─────────────────────────────────────────── */
+.api-key-card {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  max-width: 480px;
+  margin: 1.2rem auto 0;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.api-key-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1.2rem;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #333;
+  background: #fafafa;
+  border-bottom: 1px solid transparent;
+  transition: background 0.15s;
+}
+
+.api-key-header:hover {
+  background: #f0f0f0;
+}
+
+.api-key-status {
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 20px;
+  margin-left: auto;
+}
+
+.api-key-status.connected {
+  background: #d4f8e8;
+  color: #1a7a4a;
+}
+
+.api-key-status.not-set {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.api-key-toggle {
+  font-size: 0.7rem;
+  color: #888;
+  margin-left: 0.25rem;
+}
+
+.api-key-body {
+  padding: 1rem 1.2rem 1.2rem;
+  border-top: 1px solid #eee;
+}
+
+.api-key-hint {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0 0 0.75rem;
+  line-height: 1.5;
+}
+
+.api-key-hint a {
+  color: #6c63ff;
+  text-decoration: none;
+}
+
+.api-key-hint a:hover {
+  text-decoration: underline;
+}
+
+.api-key-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.api-key-input {
+  flex: 1;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  outline: none;
+  font-family: monospace;
+  letter-spacing: 0.03em;
+}
+
+.api-key-input:focus {
+  border-color: #6c63ff;
+  box-shadow: 0 0 0 2px rgba(108,99,255,0.15);
+}
+
+.btn-save-key {
+  padding: 0.55rem 1rem;
+  background: #6c63ff;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.btn-save-key:hover {
+  background: #574fd6;
+}
+
+.btn-clear-key {
+  padding: 0.55rem 0.75rem;
+  background: transparent;
+  color: #e74c3c;
+  border: 1px solid #e74c3c;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.btn-clear-key:hover {
+  background: #fdf0f0;
+}

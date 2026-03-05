@@ -16,12 +16,25 @@ export default function Login() {
   const handleSubmit = (e) => {
     e.preventDefault();
     // Mock login - navigate to home
-    localStorage.setItem('user', JSON.stringify({ email: formData.email }));
+    localStorage.setItem('user', JSON.stringify({ email: formData.email, fullName: 'Demo User' }));
     navigate('/home');
   };
 
   const quickNavigate = (path) => {
-    localStorage.setItem('user', JSON.stringify({ email: formData.email }));
+    localStorage.setItem('user', JSON.stringify({ email: formData.email, fullName: 'Demo User' }));
+    // Seed demo data so Results page isn't empty
+    if (path === '/results') {
+      localStorage.setItem('lastCheckIn', JSON.stringify({
+        feeling: 'overwhelmed',
+        trigger: 'upcoming exams',
+        physical: 'headache',
+        timestamp: new Date().toLocaleString(),
+        stressLevel: 'High',
+        emotion: 'fear',
+        confidence: 88,
+        ayasaResponse: "It sounds like you're under a lot of pressure right now. Try breaking your tasks into smaller steps and remember to take short breaks — you're doing better than you think.",
+      }));
+    }
     navigate(path);
   };
 

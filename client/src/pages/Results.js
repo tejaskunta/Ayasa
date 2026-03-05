@@ -4,20 +4,49 @@ import '../styles/pages.css';
 
 export default function Results() {
   const [checkIn, setCheckIn] = useState(null);
+  const [missing, setMissing] = useState(false);
 
   useEffect(() => {
-    const data = JSON.parse(localStorage.getItem('lastCheckIn'));
-    setCheckIn(data);
+    try {
+      const raw = localStorage.getItem('lastCheckIn');
+      if (!raw) {
+        setMissing(true);
+        return;
+      }
+      const data = JSON.parse(raw);
+      if (!data) { setMissing(true); return; }
+      setCheckIn(data);
+    } catch (e) {
+      setMissing(true);
+    }
   }, []);
 
-  if (!checkIn) {
-    return <div>Loading...</div>;
+  if (missing) {
+    return (
+      <div className="results-container">
+        <header className="navbar"><h2>Ayasa</h2></header>
+        <div className="results-content" style={{ textAlign: 'center', paddingTop: '3rem' }}>
+          <p style={{ fontSize: '1.1rem', color: '#666' }}>No check-in data found.</p>
+          <a href="/checkin" className="btn-primary" style={{ marginTop: '1rem', display: 'inline-block' }}>Start a Check-in</a>
+        </div>
+      </div>
+    );
   }
 
-  const stressLevels = ['Low', 'Moderate', 'High'];
-  const stressColors = ['#26d07c', '#f5b041', '#e74c3c'];
-  const currentLevel = stressLevels[checkIn.stressLevel];
-  const currentColor = stressColors[checkIn.stressLevel];
+  if (!checkIn) {
+    return (
+      <div className="results-container">
+        <header className="navbar"><h2>Ayasa</h2></header>
+        <div className="results-content" style={{ textAlign: 'center', paddingTop: '3rem' }}>
+          <p>Analyzing your responses...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const stressColors = { Low: '#26d07c', Moderate: '#f5b041', High: '#e74c3c' };
+  const currentLevel = checkIn.stressLevel || 'Moderate';
+  const currentColor = stressColors[currentLevel] || '#f5b041';
 
   return (
     <div className="results-container">
@@ -33,19 +62,19 @@ export default function Results() {
             {currentLevel}
           </div>
           <h2>Predicted Stress Level</h2>
+          {checkIn.emotion && checkIn.emotion !== 'unknown' && (
+            <p>Detected Emotion: <strong style={{ textTransform: 'capitalize' }}>{checkIn.emotion}</strong></p>
+          )}
           <p>Confidence Score: {checkIn.confidence}%</p>
         </div>
 
         <div className="assistant-card">
-          <h3>Assistant</h3>
+          <h3>AYASA says</h3>
           <p>
-            It sounds like you're carrying a heavy load right now. The pressure from work combined with lack of sleep is a common trigger for high stress. Here are some suggestions:
+            {checkIn.ayasaResponse
+              ? checkIn.ayasaResponse
+              : "It sounds like you're carrying a heavy load right now. Try breaking things into smaller steps, take a short break, and remember you don't have to face this alone."}
           </p>
-          <ul>
-            <li>Breathing Exercise</li>
-            <li>Calming Playlist</li>
-          </ul>
-          <button className="btn-secondary">Check Again</button>
         </div>
 
         <div className="suggested-resources">
