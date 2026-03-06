@@ -2,11 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import '../styles/pages.css';
 
-export default function Login() {
-  const [formData, setFormData] = useState({
-    email: 'user@example.com',
-    password: '••••••••'
-  });
+export default function Login({ onLogin }) {
+  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -15,71 +13,81 @@ export default function Login() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Mock login - navigate to home
-    localStorage.setItem('user', JSON.stringify({ email: formData.email, fullName: 'Demo User' }));
+    localStorage.setItem('user', JSON.stringify({ email: formData.email, fullName: formData.email.split('@')[0] }));
+    if (onLogin) onLogin();
     navigate('/home');
   };
 
-  const quickNavigate = (path) => {
-    localStorage.setItem('user', JSON.stringify({ email: formData.email, fullName: 'Demo User' }));
-    // Seed demo data so Results page isn't empty
-    if (path === '/results') {
-      localStorage.setItem('lastCheckIn', JSON.stringify({
-        feeling: 'overwhelmed',
-        trigger: 'upcoming exams',
-        physical: 'headache',
-        timestamp: new Date().toLocaleString(),
-        stressLevel: 'High',
-        emotion: 'fear',
-        confidence: 88,
-        ayasaResponse: "It sounds like you're under a lot of pressure right now. Try breaking your tasks into smaller steps and remember to take short breaks — you're doing better than you think.",
-      }));
-    }
-    navigate(path);
-  };
-
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <h1>Welcome back</h1>
-        <p>Enter your credentials to access your account</p>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Email</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-            />
+    <div className="login-page">
+      <div>
+        <div className="login-card">
+          <div className="login-logo">
+            <span className="material-symbols-outlined">psychology</span>
           </div>
-          <div className="form-group">
-            <label>Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <button type="submit" className="btn-primary">
-            Login
-          </button>
-          <p className="auth-link" style={{ marginTop: '1rem' }}>
-            Don't have an account? <Link to="/register">Sign up here</Link>
-          </p>
-        </form>
+          <h1>AYASA</h1>
+          <p className="subtitle">Stress Detection Assistant</p>
 
-        <div className="demo-navigation">
-          <p className="demo-label">Quick Demo Tour:</p>
-          <div className="demo-buttons">
-            <button onClick={() => quickNavigate('/home')} className="demo-btn">Home</button>
-            <button onClick={() => quickNavigate('/checkin')} className="demo-btn">Check-in</button>
-            <button onClick={() => quickNavigate('/results')} className="demo-btn">Results</button>
-            <button onClick={() => quickNavigate('/history')} className="demo-btn">History</button>
-          </div>
+           <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label>Email</label>
+              <div className="input-wrapper">
+                <span className="input-icon">
+                  <span className="material-symbols-outlined">mail</span>
+                </span>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="name@example.com"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Password</label>
+              <div className="input-wrapper">
+                <span className="input-icon">
+                  <span className="material-symbols-outlined">lock</span>
+                </span>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Enter your password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="input-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  <span className="material-symbols-outlined">
+                    {showPassword ? 'visibility_off' : 'visibility'}
+                  </span>
+                </button>
+              </div>
+              <div className="forgot-password">
+                <a href="#forgot">Forgot password?</a>
+              </div>
+            </div>
+
+            <button type="submit" className="btn-primary">
+              <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>login</span>
+              Sign In
+            </button>
+          </form>
+
+          <p className="auth-link" style={{ marginTop: '1.5rem' }}>
+            Don't have an account? <Link to="/register">Register</Link>
+          </p>
+        </div>
+
+        <div className="login-footer">
+          © 2024 AYASA Wellness. All rights reserved.
         </div>
       </div>
     </div>

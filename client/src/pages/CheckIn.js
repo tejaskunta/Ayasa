@@ -3,166 +3,126 @@ import { useNavigate, Link } from 'react-router-dom';
 import '../styles/pages.css';
 
 export default function CheckIn() {
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      type: 'bot',
-      text: 'Hi there! I\'m here to help you understand your stress level. Let\'s chat for a moment.'
-    },
-    {
-      id: 2,
-      type: 'bot',
-      text: 'How are you feeling right now?'
-    }
-  ]);
-  const [input, setInput] = useState('');
-  const [conversationPhase, setConversationPhase] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [userData, setUserData] = useState({
-    feeling: '',
-    trigger: '',
-    physical: ''
-  });
+  const [text, setText] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const navigate = useNavigate();
+  const maxChars = 5000;
 
-  const questions = [
-    'How are you feeling right now?',
-    'What\'s been triggering your stress lately?',
-    'Are you experiencing any physical symptoms (headache, tension, etc)?',
-  ];
+  const handleAnalyze = () => {
+    if (!text.trim()) return;
+    setIsAnalyzing(true);
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+    // Simulate analysis
+    setTimeout(() => {
+      const stressLevel = Math.floor(Math.random() * 3);
+      const confidence = (80 + Math.random() * 20).toFixed(0);
+      const checkInData = {
+        text: text,
+        timestamp: new Date().toISOString(),
+        stressLevel,
+        confidence,
+        date: new Date().toLocaleDateString('en-US', {
+          month: 'short', day: 'numeric', year: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        })
+      };
+      localStorage.setItem('lastCheckIn', JSON.stringify(checkInData));
 
-    // Add user message
-    const userMessage = {
-      id: messages.length + 1,
-      type: 'user',
-      text: input
-    };
+      // Save to history
+      const history = JSON.parse(localStorage.getItem('checkInHistory') || '[]');
+      history.unshift({ ...checkInData, id: Date.now() });
+      localStorage.setItem('checkInHistory', JSON.stringify(history));
 
-    setMessages([...messages, userMessage]);
-
-    // Store response
-    if (conversationPhase === 0) {
-      setUserData({ ...userData, feeling: input });
-    } else if (conversationPhase === 1) {
-      setUserData({ ...userData, trigger: input });
-    } else if (conversationPhase === 2) {
-      setUserData({ ...userData, physical: input });
-    }
-
-    // Add bot response
-    let botResponse = '';
-    let nextPhase = conversationPhase + 1;
-
-    if (conversationPhase === 0) {
-      botResponse = 'I understand. ' + questions[1];
-    } else if (conversationPhase === 1) {
-      botResponse = 'Thank you for sharing. ' + questions[2];
-    } else if (conversationPhase === 2) {
-      botResponse = 'Got it! Let me analyze your responses with AYASA...';
-      nextPhase = conversationPhase;
-
-      // Combine all 3 answers into one natural message for the ML backend
-      const combinedMessage =
-        `${userData.feeling}. ${userData.trigger}. ${input}`;
-
-      // Kick off the API call after the state updates render
-      setTimeout(async () => {
-        setLoading(true);
-        try {
-          const response = await fetch('http://localhost:5000/api/checkin/submit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-            userInput: combinedMessage,
-            geminiApiKey: localStorage.getItem('geminiApiKey') || '',
-          }),
-          });
-          const data = await response.json();
-          const result = data.result || {};
-
-          const fullUserData = {
-            feeling: userData.feeling,
-            trigger: userData.trigger,
-            physical: input,
-            timestamp: new Date().toLocaleString(),
-            stressLevel: result.stressLevel || 'Moderate',
-            emotion:    result.emotion    || 'unknown',
-            confidence: result.confidence || 80,
-            ayasaResponse: result.ayasaResponse || '',
-          };
-          localStorage.setItem('lastCheckIn', JSON.stringify(fullUserData));
-        } catch (err) {
-          // Network error — store minimal fallback so Results page still loads
-          const levels = ['Low', 'Moderate', 'High'];
-          localStorage.setItem('lastCheckIn', JSON.stringify({
-            feeling: userData.feeling,
-            trigger: userData.trigger,
-            physical: input,
-            timestamp: new Date().toLocaleString(),
-            stressLevel: levels[Math.floor(Math.random() * 3)],
-            emotion: 'unknown',
-            confidence: 80,
-            ayasaResponse: 'I was unable to reach the analysis server. Please try again when the ML backend is running.',
-          }));
-        } finally {
-          setLoading(false);
-          navigate('/results');
-        }
-      }, 400);
-    }
-
-    if (nextPhase <= conversationPhase) {
-      nextPhase = conversationPhase;
-    }
-
-    setMessages(prev => [...prev, {
-      id: prev.length + 2,
-      type: 'bot',
-      text: botResponse
-    }]);
-
-    setConversationPhase(nextPhase);
-    setInput('');
+      navigate('/results');
+    }, 1500);
   };
 
   return (
-    <div className="checkin-container">
+    <div className="checkin-page">
+      {/* Floating background blobs */}
+      <div className="floating-blob blob-1" />
+      <div className="floating-blob blob-2" />
+      <div className="floating-blob blob-3" />
+
       <header className="navbar">
-        <h2>Ayasa</h2>
-        <Link to="/home" className="btn-exit">Exit</Link>
+        <div className="navbar-brand">
+          <span className="material-symbols-outlined">spa</span> AYASA
+        </div>
+        <div className="navbar-links">
+          <Link to="/home">Dashboard</Link>
+          <Link to="/history">History</Link>
+        </div>
+        <div className="navbar-right">
+          <button className="navbar-icon-btn" title="Notifications">
+            <span className="material-symbols-outlined" style={{ fontSize: '1.15rem' }}>notifications</span>
+          </button>
+          <div className="navbar-avatar">U</div>
+        </div>
       </header>
 
-      <div className="chat-container">
-        <div className="chat-messages">
-          {messages.map((msg) => (
-            <div key={msg.id} className={`message message-${msg.type}`}>
-              <div className="message-content">
-                <p>{msg.text}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="checkin-content">
+        <div className="checkin-card">
+          <div className="checkin-icon">
+            <span className="material-symbols-outlined">self_improvement</span>
+          </div>
+          <h1>Tell us what's on your mind</h1>
+          <p className="subtitle">
+            Share your thoughts freely. Our AI is here to listen
+            and help you understand your stress levels.
+          </p>
 
-        <form onSubmit={handleSendMessage} className="chat-input-form">
-          <div className="input-wrapper">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your response..."
-              className="chat-input"
-              disabled={conversationPhase > 2 || loading}
+          <div className="checkin-textarea-wrapper">
+            <textarea
+              className="checkin-textarea"
+              placeholder="I'm feeling overwhelmed because..."
+              value={text}
+              onChange={(e) => setText(e.target.value.slice(0, maxChars))}
+              maxLength={maxChars}
             />
-            <button type="submit" className="send-btn" disabled={conversationPhase > 2 || loading}>
-              Send
+            <div className="textarea-footer">
+              <button className="mic-button" type="button" title="Voice input">
+                <span className="material-symbols-outlined">mic</span>
+                Voice Input
+              </button>
+              <span className="char-count">{text.length} / {maxChars}</span>
+            </div>
+          </div>
+
+          <div className="checkin-actions">
+            <button
+              className="btn-primary"
+              onClick={handleAnalyze}
+              disabled={!text.trim() || isAnalyzing}
+            >
+              {isAnalyzing ? (
+                <>
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.1rem', animation: 'pulse-dot 1s ease-in-out infinite' }}>hourglass_top</span>
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>psychology</span>
+                  Analyze Stress
+                </>
+              )}
             </button>
           </div>
-        </form>
+        </div>
+
+        <div className="checkin-privacy">
+          <span className="material-symbols-outlined">lock</span>
+          Your entries are private and encrypted.
+        </div>
       </div>
+
+      <footer className="checkin-footer">
+        <div className="checkin-footer-links">
+          <a href="#privacy">Privacy Policy</a>
+          <a href="#terms">Terms of Service</a>
+          <a href="#crisis">Crisis Support</a>
+        </div>
+        <p>© 2024 AYASA Wellness. All rights reserved.</p>
+      </footer>
     </div>
   );
 }
