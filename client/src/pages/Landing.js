@@ -8,19 +8,19 @@ export default function Landing() {
     <div className="font-body text-on-surface" style={{ background: '#0a0e1a', color: '#dfe2f3', overflowX: 'hidden' }}>
       {/* Grain + Aurora */}
       <div className="fixed inset-0 z-[100] pointer-events-none" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")", opacity: 0.04 }} />
-      <div className="fixed inset-0 -z-10" style={{ background: 'radial-gradient(circle at 20% 30%, rgba(68,229,194,0.15) 0%, transparent 40%), radial-gradient(circle at 80% 70%, rgba(79,49,156,0.2) 0%, transparent 40%)' }} />
+      <div className="fixed inset-0 -z-10" style={{ background: 'radial-gradient(circle at 20% 30%, rgba(74,163,255,0.15) 0%, transparent 40%), radial-gradient(circle at 80% 70%, rgba(79,49,156,0.2) 0%, transparent 40%)' }} />
 
       {/* ── Nav ─────────────────────────────── */}
       <nav className="fixed top-0 w-full z-50 backdrop-blur-xl" style={{ background: 'rgba(2,6,18,0.45)' }}>
         <div className="flex justify-between items-center px-8 py-4 max-w-screen-2xl mx-auto">
-          <div className="text-2xl font-serif italic text-emerald-400 drop-shadow-[0_0_8px_rgba(68,229,194,0.4)]">AYASA</div>
+          <div className="text-2xl font-serif italic text-emerald-400 drop-shadow-[0_0_8px_rgba(74,163,255,0.4)]">AYASA</div>
           <div className="hidden md:flex gap-10">
             <a className="text-emerald-400 font-bold border-b-2 border-emerald-400/50 pb-1 font-label text-sm tracking-wide" href="#hero">Home</a>
             <a className="text-slate-300 hover:text-emerald-200 transition-colors font-label text-sm tracking-wide" href="#how-it-works">How It Works</a>
             <a className="text-slate-300 hover:text-emerald-200 transition-colors font-label text-sm tracking-wide" href="#emotions">Emotions</a>
             <a className="text-slate-300 hover:text-emerald-200 transition-colors font-label text-sm tracking-wide" href="#features">Features</a>
           </div>
-          <Link to={isLoggedIn ? '/home' : '/register'} className="bg-gradient-to-r from-primary to-primary-container text-on-primary px-8 py-2.5 rounded-full font-label font-bold text-sm tracking-tight hover:scale-105 active:scale-95 transition-all duration-300 shadow-[0_0_20px_rgba(68,229,194,0.3)]" style={{ textDecoration: 'none' }}>
+          <Link to={isLoggedIn ? '/home' : '/register'} className="bg-gradient-to-r from-primary to-primary-container text-on-primary px-8 py-2.5 rounded-full font-label font-bold text-sm tracking-tight hover:scale-105 active:scale-95 transition-all duration-300 shadow-[0_0_20px_rgba(74,163,255,0.3)]" style={{ textDecoration: 'none' }}>
             {isLoggedIn ? 'Dashboard' : 'Begin Journey'}
           </Link>
         </div>
@@ -29,7 +29,7 @@ export default function Landing() {
       {/* ── Hero ────────────────────────────── */}
       <header id="hero" className="relative pt-40 pb-32 px-6 flex flex-col items-center text-center min-h-screen justify-center">
         <div className="relative mb-20">
-          <div className="w-[320px] h-[320px] rounded-full bg-gradient-to-tr from-primary/30 via-secondary/20 to-primary/40 flex items-center justify-center relative overflow-hidden" style={{ boxShadow: '0 0 80px 20px rgba(68,229,194,0.2)' }}>
+          <div className="w-[320px] h-[320px] rounded-full bg-gradient-to-tr from-primary/30 via-secondary/20 to-primary/40 flex items-center justify-center relative overflow-hidden" style={{ boxShadow: '0 0 80px 20px rgba(74,163,255,0.2)' }}>
             <div className="absolute inset-0 bg-primary/10 animate-pulse rounded-full" />
             <div className="w-48 h-48 rounded-full border border-primary/20 animate-[spin_10s_linear_infinite]" />
             <div className="absolute w-64 h-64 rounded-full border border-secondary/20 animate-[spin_15s_linear_infinite_reverse]" />
@@ -50,7 +50,7 @@ export default function Landing() {
             AYASA decodes the subtle patterns in your text to reveal the emotional truths you haven't yet spoken.
           </p>
           <div className="flex flex-col md:flex-row gap-6 justify-center">
-            <Link to={isLoggedIn ? '/home' : '/register'} className="bg-gradient-to-r from-primary to-primary-container text-on-primary px-10 py-5 rounded-full font-label font-extrabold text-lg shadow-[0_10px_40px_rgba(68,229,194,0.25)] hover:shadow-primary/40 transition-all duration-500" style={{ textDecoration: 'none' }}>
+            <Link to={isLoggedIn ? '/home' : '/register'} className="bg-gradient-to-r from-primary to-primary-container text-on-primary px-10 py-5 rounded-full font-label font-extrabold text-lg shadow-[0_10px_40px_rgba(74,163,255,0.25)] hover:shadow-primary/40 transition-all duration-500" style={{ textDecoration: 'none' }}>
               Begin Your Journey
             </Link>
             <a href="#how-it-works" className="px-10 py-5 rounded-full font-label font-bold text-lg hover:bg-white/5 transition-all border border-white/10" style={{ background: 'rgba(49,52,66,0.1)', backdropFilter: 'blur(40px)', textDecoration: 'none', color: '#dfe2f3' }}>
@@ -75,7 +75,7 @@ export default function Landing() {
             { num: '02', icon: 'psychology', title: 'AI Detection', desc: 'DistilBERT-powered deep learning model processes your inputs to classify stress levels with high accuracy and emotional understanding.', featured: true },
             { num: '03', icon: 'monitor_heart', title: 'Gemini Insights', desc: 'Google Gemini generates personalized, empathetic feedback and coping strategies based on your unique emotional profile.', secondary: true },
           ].map((c) => (
-            <div key={c.num} className={`p-10 rounded-[2rem] relative group hover:bg-surface-container-low transition-all duration-500 ${c.featured ? '-mt-6 border-primary/30 shadow-[0_0_50px_rgba(68,229,194,0.1)]' : ''}`} style={{ background: 'rgba(49,52,66,0.1)', backdropFilter: 'blur(40px)', border: c.featured ? undefined : '1px solid rgba(133,148,142,0.1)' }}>
+            <div key={c.num} className={`p-10 rounded-[2rem] relative group hover:bg-surface-container-low transition-all duration-500 ${c.featured ? '-mt-6 border-primary/30 shadow-[0_0_50px_rgba(74,163,255,0.1)]' : ''}`} style={{ background: 'rgba(49,52,66,0.1)', backdropFilter: 'blur(40px)', border: c.featured ? undefined : '1px solid rgba(133,148,142,0.1)' }}>
               <div className="text-8xl font-serif text-white/5 absolute top-4 right-8 group-hover:text-primary/10 transition-colors">{c.num}</div>
               <div className={`mb-12 inline-flex p-4 rounded-2xl ${c.secondary ? 'bg-secondary/10 text-secondary' : c.featured ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary'}`}>
                 <span className="material-symbols-outlined text-4xl">{c.icon}</span>
@@ -214,9 +214,9 @@ export default function Landing() {
 
       {/* ── CTA ────────────────────────────── */}
       <section className="py-40 px-6 relative overflow-hidden">
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at center, rgba(68,229,194,0.1) 0%, transparent 70%)' }} />
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at center, rgba(74,163,255,0.1) 0%, transparent 70%)' }} />
         <div className="max-w-4xl mx-auto flex flex-col items-center text-center relative z-10">
-          <div className="w-48 h-48 rounded-full bg-gradient-to-tr from-primary/30 via-secondary/20 to-primary/40 flex items-center justify-center mb-16 relative" style={{ boxShadow: '0 0 80px 20px rgba(68,229,194,0.2)' }}>
+          <div className="w-48 h-48 rounded-full bg-gradient-to-tr from-primary/30 via-secondary/20 to-primary/40 flex items-center justify-center mb-16 relative" style={{ boxShadow: '0 0 80px 20px rgba(74,163,255,0.2)' }}>
             <div className="absolute inset-0 animate-pulse bg-primary/20 rounded-full blur-xl" />
             <span className="material-symbols-outlined text-white text-5xl">auto_awesome</span>
           </div>
@@ -224,7 +224,7 @@ export default function Landing() {
             Your Journey Back<br />to <span className="text-primary italic">Silence</span> Starts Now
           </h2>
           <p className="text-on-surface-variant text-xl mb-12 max-w-xl mx-auto">Take the first step toward understanding your stress patterns with AI-powered emotional intelligence.</p>
-          <Link to={isLoggedIn ? '/home' : '/register'} className="bg-gradient-to-r from-primary to-primary-container text-on-primary px-12 py-6 rounded-full font-label font-extrabold text-xl shadow-[0_20px_60px_rgba(68,229,194,0.3)] hover:scale-105 transition-all duration-500 mb-6" style={{ textDecoration: 'none' }}>
+          <Link to={isLoggedIn ? '/home' : '/register'} className="bg-gradient-to-r from-primary to-primary-container text-on-primary px-12 py-6 rounded-full font-label font-extrabold text-xl shadow-[0_20px_60px_rgba(74,163,255,0.3)] hover:scale-105 transition-all duration-500 mb-6" style={{ textDecoration: 'none' }}>
             {isLoggedIn ? 'Go to Dashboard' : "Begin Your Journey — It's Free"}
           </Link>
           <p className="text-on-surface-variant/60 text-xs font-label uppercase tracking-widest">No credit card required. Private by design.</p>
@@ -252,3 +252,4 @@ export default function Landing() {
     </div>
   );
 }
+

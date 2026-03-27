@@ -30,14 +30,14 @@ export default function Results() {
         <div className="results-content" style={{ textAlign: 'center', paddingTop: '6rem' }}>
           <div style={{
             width: 80, height: 80, borderRadius: '50%',
-            background: 'rgba(68,229,194,0.06)', border: '2px solid rgba(68,229,194,0.1)',
+            background: 'rgba(74,163,255,0.06)', border: '2px solid rgba(74,163,255,0.1)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 1.5rem'
           }}>
             <span className="material-symbols-rounded" style={{ fontSize: 36, color: '#85948e' }}>search_off</span>
           </div>
           <p style={{ fontSize: '1.1rem', color: '#85948e', marginBottom: '1.5rem' }}>No check-in data found.</p>
-          <a href="/checkin" className="btn-primary" style={{ maxWidth: 240, margin: '0 auto', display: 'block' }}>Start a Check-in</a>
+          <Link to="/checkin" className="btn-primary" style={{ maxWidth: 240, margin: '0 auto', display: 'block' }}>Start a Check-in</Link>
         </div>
       </div>
     );
@@ -57,12 +57,25 @@ export default function Results() {
     );
   }
 
-  const stressColors = { Low: '#44e5c2', Moderate: '#cebdff', High: '#ffb4ab' };
-  const stressBgs    = { Low: 'rgba(68,229,194,0.06)', Moderate: 'rgba(206,189,255,0.06)', High: 'rgba(255,180,171,0.06)' };
+  const stressColors = { Low: '#4aa3ff', Moderate: '#cebdff', High: '#ffb4ab' };
+  const stressBgs    = { Low: 'rgba(74,163,255,0.06)', Moderate: 'rgba(206,189,255,0.06)', High: 'rgba(255,180,171,0.06)' };
   const stressIcons  = { Low: 'check_circle', Moderate: 'trending_flat', High: 'warning' };
   const currentLevel = checkIn.stressLevel || 'Moderate';
   const currentColor = stressColors[currentLevel] || '#cebdff';
-  const confidence = checkIn.confidence || 80;
+  const rawConfidence = Number(checkIn.confidence);
+  const confidence = Number.isFinite(rawConfidence)
+    ? (rawConfidence <= 1 ? rawConfidence * 100 : rawConfidence)
+    : 80;
+  const confidenceDisplay = Math.max(0, Math.min(100, Math.round(confidence)));
+
+  const fallbackResources = [
+    { title: 'Breathing Exercise', url: 'https://themindclan.com/exercises/box-breathing-exercise-online/' },
+    { title: 'Calming Playlist', url: 'https://open.spotify.com/track/0Dy7FBIZbU5pgz6KFSixML' },
+  ];
+  const resources = Array.isArray(checkIn.resources) && checkIn.resources.length > 0
+    ? checkIn.resources
+    : fallbackResources;
+  const isDirectScoreQuery = Boolean(checkIn.directScoreQuery);
 
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
@@ -80,7 +93,7 @@ export default function Results() {
 
       <div className="results-content">
         <h1>
-          <span className="material-symbols-rounded" style={{ fontSize: 30, verticalAlign: 'middle', marginRight: 10, color: '#44e5c2' }}>assessment</span>
+          <span className="material-symbols-rounded" style={{ fontSize: 30, verticalAlign: 'middle', marginRight: 10, color: '#4aa3ff' }}>assessment</span>
           Your Results
         </h1>
 
@@ -88,7 +101,7 @@ export default function Results() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <svg width="130" height="130" viewBox="0 0 130 130">
-                <circle cx="65" cy="65" r={radius} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
+                <circle cx="65" cy="65" r={radius} fill="none" stroke="rgba(27,31,44,0.12)" strokeWidth="8" />
                 <circle
                   cx="65" cy="65" r={radius} fill="none"
                   stroke={currentColor}
@@ -102,10 +115,9 @@ export default function Results() {
               </svg>
               <div style={{
                 position: 'absolute', inset: 0,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}>
-                <span style={{ fontSize: '1.8rem', fontWeight: 800, color: currentColor }}>{confidence}%</span>
-                <span style={{ fontSize: '0.7rem', color: '#85948e', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, fontFamily: 'Plus Jakarta Sans, sans-serif' }}>confidence</span>
+                <span style={{ fontSize: '2rem', lineHeight: 1, fontWeight: 800, color: currentColor, display: 'block', transform: 'translateY(-3px)' }}>{confidenceDisplay}%</span>
               </div>
             </div>
 
@@ -120,7 +132,7 @@ export default function Results() {
               {checkIn.emotion && checkIn.emotion !== 'unknown' && (
                 <p style={{ marginTop: '0.5rem' }}>
                   <span className="material-symbols-rounded" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 6, color: currentColor }}>mood</span>
-                  Emotion: <strong style={{ textTransform: 'capitalize', color: '#dfe2f3' }}>{checkIn.emotion}</strong>
+                  Emotion: <strong style={{ textTransform: 'capitalize', color: '#1b1f2c' }}>{checkIn.emotion}</strong>
                 </p>
               )}
             </div>
@@ -137,6 +149,11 @@ export default function Results() {
               ? checkIn.ayasaResponse
               : "It sounds like you're carrying a heavy load right now. Try breaking things into smaller steps, take a short break, and remember you don't have to face this alone."}
           </p>
+          {isDirectScoreQuery && (
+            <p style={{ marginTop: '0.8rem', color: '#4b5e7a', fontSize: '0.88rem' }}>
+              This response was generated for a direct stress-score request.
+            </p>
+          )}
         </div>
 
         <div className="suggested-resources">
@@ -145,18 +162,28 @@ export default function Results() {
             Suggested Resources
           </h3>
           <div className="resource-buttons">
-            <button className="resource-btn">
-              <span className="material-symbols-rounded" style={{ fontSize: 18 }}>air</span>
-              Breathing Exercise
-            </button>
-            <button className="resource-btn">
-              <span className="material-symbols-rounded" style={{ fontSize: 18 }}>music_note</span>
-              Calming Playlist
-            </button>
+            {resources.map((item, idx) => (
+              <a
+                key={`${item.url || item.title}-${idx}`}
+                className="resource-btn"
+                href={item.url || '#'}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <span className="material-symbols-rounded" style={{ fontSize: 18 }}>
+                  {idx % 2 === 0 ? 'air' : 'self_improvement'}
+                </span>
+                {item.title || 'Support Resource'}
+              </a>
+            ))}
           </div>
         </div>
 
         <div className="nav-buttons-row">
+          <Link to="/checkin" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <span className="material-symbols-rounded" style={{ fontSize: 18 }}>forum</span>
+            Back to Chat
+          </Link>
           <Link to="/history" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <span className="material-symbols-rounded" style={{ fontSize: 18 }}>timeline</span>
             View History
@@ -170,3 +197,4 @@ export default function Results() {
     </div>
   );
 }
+

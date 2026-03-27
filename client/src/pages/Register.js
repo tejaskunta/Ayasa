@@ -63,14 +63,14 @@ export default function Register() {
       <div className="auth-brand-panel">
         <div className="brand-content">
           <div className="brand-logo-ring">
-            <span className="material-symbols-rounded" style={{ color: '#44e5c2', fontSize: 40 }}>spa</span>
+            <span className="material-symbols-rounded" style={{ color: '#4aa3ff', fontSize: 40 }}>spa</span>
           </div>
           <h1>AYASA</h1>
           <p>Begin your journey to emotional clarity.</p>
           <div className="brand-features">
             <div className="brand-feature">
               <div className="brand-feature-icon">
-                <span className="material-symbols-rounded" style={{ color: '#44e5c2', fontSize: 18 }}>shield</span>
+                <span className="material-symbols-rounded" style={{ color: '#4aa3ff', fontSize: 18 }}>shield</span>
               </div>
               <span>Private &amp; Secure</span>
             </div>
@@ -82,7 +82,7 @@ export default function Register() {
             </div>
             <div className="brand-feature">
               <div className="brand-feature-icon">
-                <span className="material-symbols-rounded" style={{ color: '#44e5c2', fontSize: 18 }}>favorite</span>
+                <span className="material-symbols-rounded" style={{ color: '#4aa3ff', fontSize: 18 }}>favorite</span>
               </div>
               <span>Always Here For You</span>
             </div>
@@ -173,3 +173,4 @@ export default function Register() {
     </div>
   );
 }
+

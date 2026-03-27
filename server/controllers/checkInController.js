@@ -1,68 +1,123 @@
-const http = require('http');
+const axios = require('axios');
+const ML_BASE_URL = process.env.ML_BACKEND_URL || 'http://localhost:8000';
 
 // In-memory check-in history (demo — replace with MongoDB for production)
 const checkInHistory = [];
 
+const normalizePredictPayload = (payload = {}) => ({
+  stressLevel: payload.stressLevel,
+  emotion: payload.emotion,
+  confidence: payload.confidence,
+  ayasaResponse: payload.ayasaResponse,
+  resources: payload.resources,
+  directScoreQuery: payload.directScoreQuery,
+  geminiUsed: Boolean(payload.geminiUsed),
+  geminiError: payload.geminiError || null,
+});
+
+const normalizeChatPayload = (payload = {}) => ({
+  stressLevel: payload.stress,
+  emotion: payload.emotion,
+  confidence: payload.confidence ?? payload.emotion_score,
+  ayasaResponse: payload.ayasa_response,
+  resources: [],
+  directScoreQuery: false,
+  geminiUsed: false,
+  geminiError: 'Legacy /chat endpoint does not expose Gemini diagnostics.',
+});
+
 // ── Call the Python ML backend ──────────────────────────────────────────────
-const callMLBackend = (message, geminiApiKey = '') => {
-  return new Promise((resolve, reject) => {
-    const body = JSON.stringify({ message, gemini_api_key: geminiApiKey });
+const callMLBackend = async (text, userId = 'demo_user', geminiApiKey = '') => {
+  const safeUserId = userId || 'demo_user';
+  const safeKey = geminiApiKey || '';
 
-    const options = {
-      hostname: 'localhost',
-      port: 8000,
-      path: '/chat',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body),
+  try {
+    const predictResponse = await axios.post(
+      `${ML_BASE_URL}/predict`,
+      {
+        text,
+        user_id: safeUserId,
+        gemini_api_key: safeKey,
       },
+      { timeout: 15000 }
+    );
+    return normalizePredictPayload(predictResponse.data);
+  } catch (error) {
+    const status = error?.response?.status;
+    if (status !== 404) throw error;
+
+    // Compatibility path for legacy ML backend exposing /chat only.
+    const chatResponse = await axios.post(
+      `${ML_BASE_URL}/chat`,
+      {
+        message: text,
+        user_id: safeUserId,
+        gemini_api_key: safeKey,
+      },
+      { timeout: 15000 }
+    );
+    return normalizeChatPayload(chatResponse.data);
+  }
+};
+
+const getMLBackendHealth = async () => {
+  try {
+    const response = await axios.get(`${ML_BASE_URL}/health`, { timeout: 5000 });
+    const payload = response?.data || {};
+    return {
+      available: true,
+      geminiActive: Boolean(payload.gemini_active),
+      payload,
+      error: null,
     };
+  } catch (error) {
+    return {
+      available: false,
+      geminiActive: false,
+      payload: {},
+      error: error?.message || 'ML backend unavailable',
+    };
+  }
+};
 
-    const req = http.request(options, (res) => {
-      let data = '';
-      res.on('data', (chunk) => (data += chunk));
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch (e) {
-          reject(new Error('Invalid JSON from ML backend'));
-        }
-      });
-    });
+const normalizeStressLevelForUI = (mlStressLevel) => {
+  const raw = (mlStressLevel || '').toLowerCase();
+  if (raw.includes('high')) return 'High';
+  if (raw.includes('medium') || raw.includes('moderate')) return 'Moderate';
+  if (raw.includes('low')) return 'Low';
+  return 'Moderate';
+};
 
-    req.setTimeout(15000, () => {
-      req.destroy();
-      reject(new Error('ML backend timeout'));
-    });
-
-    req.on('error', reject);
-    req.write(body);
-    req.end();
-  });
+const normalizeConfidence = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 85;
+  if (num <= 1) return Math.round(num * 100);
+  return Math.round(num);
 };
 
 // ── POST /api/checkin/submit ────────────────────────────────────────────────
 exports.submitCheckIn = async (req, res) => {
   try {
-    const { userInput, geminiApiKey } = req.body;
+    const { userInput, userId, geminiApiKey } = req.body;
 
     if (!userInput) {
       return res.status(400).json({ error: 'User input is required' });
     }
 
-    let stressLevel, emotion, ayasaResponse, confidence;
+    let stressLevel, emotion, ayasaResponse, confidence, resources, directScoreQuery, geminiUsed, geminiError;
 
     try {
-      // ── ML path: DistilBERT + Gemini ──
-      const mlResult = await callMLBackend(userInput, geminiApiKey);
-      emotion       = mlResult.emotion;
-      // Map all 3 stress levels
-      if (mlResult.stress === 'High Stress') stressLevel = 'High';
-      else if (mlResult.stress === 'Moderate Stress') stressLevel = 'Moderate';
-      else stressLevel = 'Low';
-      ayasaResponse = mlResult.ayasa_response;
-      confidence    = mlResult.emotion_score || 85;
+      const mlResult = await callMLBackend(userInput, userId, geminiApiKey);
+      emotion = mlResult.emotion || 'unknown';
+      stressLevel = normalizeStressLevelForUI(mlResult.stressLevel);
+      ayasaResponse =
+        mlResult.ayasaResponse ||
+        'I can see what you are carrying right now. Try one small, supportive step and check in again soon.';
+      confidence = normalizeConfidence(mlResult.confidence);
+      resources = Array.isArray(mlResult.resources) ? mlResult.resources : getFallbackResources(stressLevel);
+      directScoreQuery = Boolean(mlResult.directScoreQuery);
+      geminiUsed = Boolean(mlResult.geminiUsed);
+      geminiError = mlResult.geminiError || null;
     } catch (mlError) {
       // ── Fallback: ML server not running ──
       console.warn('ML backend unavailable, using fallback:', mlError.message);
@@ -71,6 +126,10 @@ exports.submitCheckIn = async (req, res) => {
       emotion       = 'unknown';
       ayasaResponse = getAdviceForStressLevel(stressLevel);
       confidence    = Math.floor(75 + Math.random() * 25);
+      resources     = getFallbackResources(stressLevel);
+      directScoreQuery = false;
+      geminiUsed = false;
+      geminiError = `Node fallback path: ${mlError.message}`;
     }
 
     const checkInData = {
@@ -80,7 +139,11 @@ exports.submitCheckIn = async (req, res) => {
       emotion,
       confidence,
       ayasaResponse,
-      timestamp: new Date(),
+      resources,
+      directScoreQuery,
+      geminiUsed,
+      geminiError,
+      timestamp: new Date().toISOString(),
     };
 
     checkInHistory.push(checkInData);
@@ -106,6 +169,19 @@ exports.getHistory = async (req, res) => {
   }
 };
 
+// ── GET /api/checkin/ml-health ─────────────────────────────────────────────
+exports.getMLHealth = async (req, res) => {
+  const health = await getMLBackendHealth();
+  res.json({
+    available: health.available,
+    geminiActive: health.geminiActive,
+    stressModelLoaded: Boolean(health.payload?.stress_model_loaded),
+    emotionModelLoaded: Boolean(health.payload?.emotion_model_loaded),
+    timestamp: new Date().toISOString(),
+    error: health.error,
+  });
+};
+
 // ── Fallback rule-based advice ──────────────────────────────────────────────
 const getAdviceForStressLevel = (level) => {
   const advice = {
@@ -114,4 +190,22 @@ const getAdviceForStressLevel = (level) => {
     High:     'You seem to be under significant stress. Consider talking to a counsellor or trusted friend.',
   };
   return advice[level] || 'Remember to take care of yourself!';
+};
+
+const getFallbackResources = (level) => {
+  const resources = {
+    Low: [
+      { title: 'Box Breathing Exercise', url: 'https://themindclan.com/exercises/box-breathing-exercise-online/' },
+      { title: 'Pomodoro Focus Timer', url: 'https://pomofocus.io/' },
+    ],
+    Moderate: [
+      { title: 'Guided Meditation', url: 'https://www.youtube.com/watch?v=inpok4MKVLM' },
+      { title: 'Stress Management Tips', url: 'https://www.mind.org.uk/information-support/types-of-mental-health-problems/stress/' },
+    ],
+    High: [
+      { title: 'KIRAN Mental Health Helpline', url: 'https://telemanas.mohfw.gov.in/home' },
+      { title: 'AASRA 24/7 Helpline', url: 'http://www.aasra.info/helpline.html' },
+    ],
+  };
+  return resources[level] || resources.Moderate;
 };

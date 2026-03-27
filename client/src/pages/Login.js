@@ -47,14 +47,14 @@ export default function Login() {
       <div className="auth-brand-panel">
         <div className="brand-content">
           <div className="brand-logo-ring">
-            <span className="material-symbols-rounded" style={{ color: '#44e5c2', fontSize: 40 }}>spa</span>
+            <span className="material-symbols-rounded" style={{ color: '#4aa3ff', fontSize: 40 }}>spa</span>
           </div>
           <h1>AYASA</h1>
           <p>Welcome back. We've been listening.</p>
           <div className="brand-features">
             <div className="brand-feature">
               <div className="brand-feature-icon">
-                <span className="material-symbols-rounded" style={{ color: '#44e5c2', fontSize: 18 }}>psychology</span>
+                <span className="material-symbols-rounded" style={{ color: '#4aa3ff', fontSize: 18 }}>psychology</span>
               </div>
               <span>AI-Powered Stress Detection</span>
             </div>
@@ -66,7 +66,7 @@ export default function Login() {
             </div>
             <div className="brand-feature">
               <div className="brand-feature-icon">
-                <span className="material-symbols-rounded" style={{ color: '#44e5c2', fontSize: 18 }}>insights</span>
+                <span className="material-symbols-rounded" style={{ color: '#4aa3ff', fontSize: 18 }}>insights</span>
               </div>
               <span>Track Your Wellness Journey</span>
             </div>
@@ -127,8 +127,8 @@ export default function Login() {
             </p>
           </form>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: '1.5rem', fontSize: '0.68rem', color: 'rgba(68,229,194,0.35)', textTransform: 'uppercase', letterSpacing: '0.12em', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-            <span className="material-symbols-rounded" style={{ fontSize: 14, color: 'rgba(68,229,194,0.35)' }}>lock</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: '1.5rem', fontSize: '0.68rem', color: 'rgba(74,163,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.12em', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+            <span className="material-symbols-rounded" style={{ fontSize: 14, color: 'rgba(74,163,255,0.35)' }}>lock</span>
             256-bit encrypted &amp; secure
           </div>
         </div>
@@ -136,3 +136,4 @@ export default function Login() {
     </div>
   );
 }
+

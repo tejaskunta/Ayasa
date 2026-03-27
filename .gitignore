@@ -16,3 +16,9 @@ yarn-error.log*
 
 .git_disabled/
 server/data/users.json
+
+# ML backend local environment and heavy artifacts
+ml-backend/venv/
+ml-backend/__pycache__/
+ml-backend/stress_analysis/
+ml-backend/stress_model/
