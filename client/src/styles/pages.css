@@ -1092,6 +1092,250 @@ body {
   to   { transform: rotate(360deg); }
 }
 
+/* ── Dashboard Metrics ────────────────────────────────────────────────────── */
+.dash-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+.dash-metric-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  transition: all 0.4s var(--ease);
+}
+.dash-metric-card:hover {
+  border-color: rgba(68,229,194,0.2);
+  transform: translateY(-3px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.3);
+}
+.dash-mc-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 0.85rem;
+}
+.dash-mc-label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.68rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: rgba(68,229,194,0.7);
+}
+.dash-mc-value {
+  font-family: 'Noto Serif', serif;
+  font-size: 2.2rem; font-weight: 700;
+  color: var(--text); line-height: 1.1;
+}
+.dash-mc-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem; color: var(--text-muted);
+  margin-top: 0.6rem;
+}
+
+/* ── Dashboard 2-Column Row ─────────────────────────────────────────────── */
+.dash-row-2col {
+  display: grid;
+  grid-template-columns: 7fr 5fr;
+  gap: 1.4rem;
+  margin-bottom: 1.75rem;
+}
+
+.dash-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid var(--glass-border);
+  border-radius: 22px;
+  padding: 2rem;
+}
+.dash-panel-title {
+  font-family: 'Noto Serif', serif;
+  font-size: 1.15rem; font-weight: 600;
+  color: var(--text); margin-bottom: 1.5rem;
+}
+.dash-panel-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 1.25rem;
+}
+.dash-empty {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem; color: var(--text-muted);
+  font-style: italic; padding: 2rem 0; text-align: center;
+}
+
+/* Emotion Progress Bars */
+.dash-progress-list { display: flex; flex-direction: column; gap: 1.1rem; }
+.dash-progress-row {}
+.dash-progress-labels {
+  display: flex; justify-content: space-between;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.82rem; margin-bottom: 0.35rem;
+}
+.dash-progress-labels span:first-child { color: rgba(223,226,243,0.75); }
+.dash-progress-track {
+  height: 6px; width: 100%;
+  background: var(--surface); border-radius: 4px; overflow: hidden;
+}
+.dash-progress-fill {
+  height: 100%; border-radius: 4px;
+  transition: width 1s var(--ease);
+}
+
+/* Stress Pattern */
+.dash-stress-split {
+  display: flex; height: 36px; width: 100%;
+  border-radius: 10px; overflow: hidden; gap: 2px;
+  margin-bottom: 1.5rem;
+}
+.dash-split-high {
+  background: rgba(255,180,171,0.25); color: #ffb4ab;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.6rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  min-width: 40px;
+}
+.dash-split-low {
+  background: rgba(68,229,194,0.2); color: #44e5c2;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.6rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  min-width: 40px;
+}
+.dash-bar-chart {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  height: 140px; gap: 6px;
+}
+.dash-bar-col {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; height: 100%; justify-content: flex-end;
+}
+.dash-bar {
+  width: 100%; border-radius: 6px 6px 0 0;
+  background: rgba(68,229,194,0.18);
+  transition: all 0.4s var(--ease);
+  position: relative; min-height: 4px;
+}
+.dash-bar:hover { background: rgba(68,229,194,0.4); }
+.dash-bar-tooltip {
+  display: none; position: absolute; top: -22px;
+  left: 50%; transform: translateX(-50%);
+  background: var(--surface-highest); color: var(--primary);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.65rem; font-weight: 700;
+  padding: 2px 7px; border-radius: 6px;
+  white-space: nowrap;
+}
+.dash-bar:hover .dash-bar-tooltip { display: block; }
+.dash-bar-label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.58rem; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  margin-top: 8px;
+}
+
+/* Recent Sessions List */
+.dash-sessions-list { display: flex; flex-direction: column; gap: 4px; }
+.dash-session-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.65rem 0.75rem; border-radius: 14px;
+  transition: background 0.2s;
+}
+.dash-session-item:hover { background: rgba(255,255,255,0.03); }
+.dash-session-left { display: flex; align-items: center; gap: 0.7rem; }
+.dash-session-icon {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(68,229,194,0.08);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.dash-session-title {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem; font-weight: 600;
+  color: var(--text);
+}
+.dash-session-time {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.65rem; color: var(--text-muted);
+}
+.dash-session-badge {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.6rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 0.2rem 0.6rem; border-radius: 20px;
+  white-space: nowrap;
+}
+
+/* AYASA Insight Card */
+.dash-insight-card {
+  background: linear-gradient(135deg, rgba(56,19,133,0.25), rgba(49,52,66,0.15));
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(206,189,255,0.15);
+  border-radius: 22px; padding: 2rem;
+  position: relative; overflow: hidden;
+}
+.dash-insight-glow {
+  position: absolute; top: -40px; right: -40px;
+  width: 140px; height: 140px;
+  background: rgba(206,189,255,0.08); filter: blur(60px);
+  border-radius: 50%; pointer-events: none;
+}
+
+/* Wellbeing Score */
+.dash-wellbeing {
+  background: var(--glass-bg);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  padding: 2.5rem;
+  margin-bottom: 1.75rem;
+  position: relative; overflow: hidden;
+}
+.dash-wellbeing::after {
+  content: ''; position: absolute;
+  right: -60px; bottom: -60px;
+  width: 260px; height: 260px;
+  background: rgba(68,229,194,0.04);
+  filter: blur(80px); border-radius: 50%;
+  pointer-events: none;
+}
+.dash-wellbeing-inner {
+  display: grid; grid-template-columns: auto 1fr;
+  gap: 3rem; align-items: center;
+  position: relative; z-index: 1;
+}
+.dash-wellbeing-gauge {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  min-width: 240px;
+}
+.dash-wellbeing-score {
+  position: absolute; bottom: 10px;
+  display: flex; flex-direction: column; align-items: center;
+}
+.dash-wb-num {
+  font-family: 'Noto Serif', serif;
+  font-size: 3rem; font-weight: 700; line-height: 1;
+}
+.dash-wb-max {
+  font-size: 1rem; opacity: 0.3; margin-left: 2px;
+}
+.dash-wb-label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.6rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.15em;
+  color: var(--primary); margin-top: 4px;
+}
+.dash-wb-badge {
+  padding: 0.5rem 0.9rem; border-radius: 14px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .auth-card { padding: 2rem 1.5rem; }
@@ -1104,4 +1348,7 @@ body {
   .home-bottom { grid-template-columns: 1fr; }
   .stress-card > div { flex-direction: column; }
   .nav-buttons-row { flex-direction: column; }
+  .dash-metrics { grid-template-columns: repeat(2, 1fr); }
+  .dash-row-2col { grid-template-columns: 1fr; }
+  .dash-wellbeing-inner { grid-template-columns: 1fr; justify-items: center; text-align: center; }
 }
