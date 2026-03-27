@@ -4,27 +4,16 @@ import '../styles/pages.css';
 
 export default function CheckIn() {
   const [messages, setMessages] = useState([
-    {
-      id: 1,
-      type: 'bot',
-      text: 'Hi there! I\'m here to help you understand your stress level. Let\'s chat for a moment.'
-    },
-    {
-      id: 2,
-      type: 'bot',
-      text: 'How are you feeling right now?'
-    }
+    { id: 1, type: 'bot', text: "Welcome to your sanctuary. I'm here to help you understand your stress level. Let's have a mindful conversation." },
+    { id: 2, type: 'bot', text: 'How are you feeling right now?' }
   ]);
   const [input, setInput] = useState('');
   const [conversationPhase, setConversationPhase] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [userData, setUserData] = useState({
-    feeling: '',
-    trigger: '',
-    physical: ''
-  });
+  const [userData, setUserData] = useState({ feeling: '', trigger: '', physical: '' });
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
 
   const getUserEmail = () => {
     try { return JSON.parse(localStorage.getItem('user'))?.email || 'default'; }
@@ -43,33 +32,33 @@ export default function CheckIn() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
+  useEffect(() => {
+    if (!loading && conversationPhase <= 2) inputRef.current?.focus();
+  }, [loading, conversationPhase]);
+
   const questions = [
     'How are you feeling right now?',
-    'What\'s been triggering your stress lately?',
+    "What's been triggering your stress lately?",
     'Are you experiencing any physical symptoms (headache, tension, etc)?',
   ];
-
   const phaseLabels = ['Feelings', 'Triggers', 'Symptoms'];
+  const phaseIcons  = ['mood', 'bolt', 'monitor_heart'];
+  const phaseTags   = [
+    { emotion: 'Listening', stress: 'Assessing' },
+    { emotion: 'Empathy', stress: 'Analyzing' },
+    { emotion: 'Attentive', stress: 'Processing' },
+  ];
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
 
-    const userMessage = {
-      id: messages.length + 1,
-      type: 'user',
-      text: input
-    };
-
+    const userMessage = { id: messages.length + 1, type: 'user', text: input, time: new Date() };
     setMessages([...messages, userMessage]);
 
-    if (conversationPhase === 0) {
-      setUserData({ ...userData, feeling: input });
-    } else if (conversationPhase === 1) {
-      setUserData({ ...userData, trigger: input });
-    } else if (conversationPhase === 2) {
-      setUserData({ ...userData, physical: input });
-    }
+    if (conversationPhase === 0) setUserData({ ...userData, feeling: input });
+    else if (conversationPhase === 1) setUserData({ ...userData, trigger: input });
+    else if (conversationPhase === 2) setUserData({ ...userData, physical: input });
 
     let botResponse = '';
     let nextPhase = conversationPhase + 1;
@@ -79,11 +68,9 @@ export default function CheckIn() {
     } else if (conversationPhase === 1) {
       botResponse = 'Thank you for sharing. ' + questions[2];
     } else if (conversationPhase === 2) {
-      botResponse = 'Got it! Let me analyze your responses with AYASA...';
+      botResponse = 'Got it. Let me analyze your responses with AYASA intelligence...';
       nextPhase = conversationPhase;
-
-      const combinedMessage =
-        `${userData.feeling}. ${userData.trigger}. ${input}`;
+      const combinedMessage = `${userData.feeling}. ${userData.trigger}. ${input}`;
 
       setTimeout(async () => {
         setLoading(true);
@@ -92,34 +79,27 @@ export default function CheckIn() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-            userInput: combinedMessage,
-            geminiApiKey: localStorage.getItem('geminiApiKey') || '',
-          }),
+              userInput: combinedMessage,
+              geminiApiKey: localStorage.getItem('geminiApiKey') || '',
+            }),
           });
           const data = await response.json();
           const result = data.result || {};
-
-          const fullUserData = {
-            feeling: userData.feeling,
-            trigger: userData.trigger,
-            physical: input,
+          saveCheckIn({
+            feeling: userData.feeling, trigger: userData.trigger, physical: input,
             timestamp: new Date().toLocaleString(),
             stressLevel: result.stressLevel || 'Moderate',
-            emotion:    result.emotion    || 'unknown',
+            emotion: result.emotion || 'unknown',
             confidence: result.confidence || 80,
             ayasaResponse: result.ayasaResponse || '',
-          };
-          saveCheckIn(fullUserData);
+          });
         } catch (err) {
           const levels = ['Low', 'Moderate', 'High'];
           saveCheckIn({
-            feeling: userData.feeling,
-            trigger: userData.trigger,
-            physical: input,
+            feeling: userData.feeling, trigger: userData.trigger, physical: input,
             timestamp: new Date().toLocaleString(),
             stressLevel: levels[Math.floor(Math.random() * 3)],
-            emotion: 'unknown',
-            confidence: 80,
+            emotion: 'unknown', confidence: 80,
             ayasaResponse: 'I was unable to reach the analysis server. Please try again when the ML backend is running.',
           });
         } finally {
@@ -129,112 +109,145 @@ export default function CheckIn() {
       }, 400);
     }
 
-    if (nextPhase <= conversationPhase) {
-      nextPhase = conversationPhase;
-    }
+    if (nextPhase <= conversationPhase) nextPhase = conversationPhase;
 
     setMessages(prev => [...prev, {
-      id: prev.length + 2,
-      type: 'bot',
-      text: botResponse
+      id: prev.length + 2, type: 'bot', text: botResponse, time: new Date(),
+      tags: phaseTags[Math.min(conversationPhase, 2)]
     }]);
-
     setConversationPhase(nextPhase);
     setInput('');
   };
 
+  const formatTime = (d) => {
+    if (!d) return '';
+    const date = d instanceof Date ? d : new Date(d);
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  };
+
   return (
-    <div className="checkin-container">
-      <header className="navbar">
-        <h2>AYASA</h2>
-        <Link to="/home" className="btn-exit">
-          <span className="material-symbols-rounded" style={{ fontSize: 18 }}>arrow_back</span>
-          Exit
-        </Link>
+    <div className="sanctuary-chat">
+      {/* Background layers */}
+      <div className="sanctuary-grain" />
+      <div className="sanctuary-aurora" />
+
+      {/* Header */}
+      <header className="sanctuary-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Link to="/home" className="sanctuary-back">
+            <span className="material-symbols-rounded" style={{ fontSize: 20 }}>arrow_back</span>
+          </Link>
+          <div>
+            <h2 style={{ fontFamily: 'Playfair Display, Noto Serif, serif', fontSize: '1.15rem', fontWeight: 700, color: '#dfe2f3', margin: 0 }}>
+              Wellness Sanctuary
+            </h2>
+            <span style={{ fontSize: '0.6rem', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#44e5c2' }}>
+              Active Insight Mode
+            </span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {/* Phase Pills */}
+          <div className="sanctuary-phases">
+            {phaseLabels.map((label, i) => {
+              const isDone   = conversationPhase > i;
+              const isActive = conversationPhase === i;
+              return (
+                <div key={label} className={`sanctuary-phase${isDone ? ' done' : ''}${isActive ? ' active' : ''}`}>
+                  <span className="material-symbols-rounded" style={{ fontSize: 14 }}>{isDone ? 'check_circle' : phaseIcons[i]}</span>
+                  <span>{label}</span>
+                </div>
+              );
+            })}
+          </div>
+          <Link to="/home" style={{ color: '#85948e', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, textDecoration: 'none' }}>
+            <span className="material-symbols-rounded" style={{ fontSize: 16 }}>close</span>
+          </Link>
+        </div>
       </header>
 
-      {/* Phase progress indicator */}
-      <div style={{
-        display: 'flex', justifyContent: 'center', gap: 16, padding: '1.25rem 1rem 0.5rem',
-        position: 'relative', zIndex: 1
-      }}>
-        {phaseLabels.map((label, i) => {
-          const isDone = conversationPhase > i;
-          const isActive = conversationPhase === i;
-          return (
-            <div key={label} style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              opacity: conversationPhase >= i ? 1 : 0.35,
-              transition: 'opacity 0.3s ease'
-            }}>
-              <div style={{
-                width: 28, height: 28, borderRadius: '50%',
-                background: isDone
-                  ? 'linear-gradient(135deg, #065f46, #34d399)'
-                  : isActive
-                    ? 'rgba(68,229,194,0.12)' : 'rgba(68,229,194,0.04)',
-                border: conversationPhase >= i
-                  ? `2px solid ${isDone ? 'rgba(110,231,183,0.8)' : '#44e5c2'}`
-                  : '2px solid rgba(68,229,194,0.1)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11, fontWeight: 700,
-                color: isDone ? '#fff' : '#44e5c2',
-                transition: 'all 0.3s ease',
-                fontFamily: 'Plus Jakarta Sans, sans-serif'
-              }}>
-                {isDone ? '✓' : i + 1}
+      {/* Chat Messages */}
+      <div className="sanctuary-messages">
+        {messages.map((msg) => (
+          <div key={msg.id} className={`sanc-msg sanc-msg-${msg.type}`}>
+            {msg.type === 'bot' ? (
+              <div className="sanc-bot-row">
+                <div className="sanc-bot-avatar">
+                  <span className="material-symbols-rounded" style={{ fontSize: 16, fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                </div>
+                <div className="sanc-bot-content">
+                  <span className="sanc-bot-label">AYASA Intelligence</span>
+                  <div className="sanc-bot-bubble">
+                    <div className="sanc-bot-bubble-gradient" />
+                    <p style={{ position: 'relative', zIndex: 1 }}>{msg.text}</p>
+                  </div>
+                  {msg.tags && (
+                    <div className="sanc-tags">
+                      <span className="sanc-tag sanc-tag-emotion">{msg.tags.emotion}</span>
+                      <span className="sanc-tag sanc-tag-stress">{msg.tags.stress}</span>
+                    </div>
+                  )}
+                </div>
               </div>
-              <span style={{
-                fontSize: '0.75rem', fontWeight: 600,
-                color: conversationPhase >= i ? '#44e5c2' : '#85948e',
-                letterSpacing: '0.04em',
-                fontFamily: 'Plus Jakarta Sans, sans-serif'
-              }}>{label}</span>
+            ) : (
+              <div className="sanc-user-row">
+                <div className="sanc-user-bubble">
+                  <p>{msg.text}</p>
+                </div>
+                <span className="sanc-msg-time">{formatTime(msg.time)}</span>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* Premium Typing Indicator */}
+        {loading && (
+          <div className="sanc-msg sanc-msg-bot">
+            <div className="sanc-bot-row">
+              <div className="sanc-bot-avatar pulsing">
+                <span className="material-symbols-rounded" style={{ fontSize: 16, fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+              </div>
+              <div className="sanc-bot-content">
+                <span className="sanc-bot-label" style={{ opacity: 0.6 }}>Processing...</span>
+                <div className="sanc-typing-bubble">
+                  <div className="sanc-typing-dots">
+                    <span className="dot dot-1" /><span className="dot dot-2" /><span className="dot dot-3" />
+                  </div>
+                </div>
+                <p className="sanc-analyzing-text">AYASA is analyzing your emotional patterns...</p>
+              </div>
             </div>
-          );
-        })}
+          </div>
+        )}
+        <div ref={messagesEndRef} />
       </div>
 
-      <div className="chat-container">
-        <div className="chat-messages">
-          {messages.map((msg) => (
-            <div key={msg.id} className={`message message-${msg.type}`}>
-              {msg.type === 'bot' && (
-                <div className="bot-avatar">
-                  <span className="material-symbols-rounded" style={{ fontSize: 18 }}>spa</span>
-                </div>
-              )}
-              <div className="message-content">
-                <p>{msg.text}</p>
-              </div>
-            </div>
-          ))}
-          {loading && (
-            <div className="message message-bot">
-              <div className="bot-avatar">
-                <span className="material-symbols-rounded" style={{ fontSize: 18 }}>spa</span>
-              </div>
-              <div className="typing-indicator">
-                <span></span><span></span><span></span>
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        <form onSubmit={handleSendMessage} className="chat-input-form">
-          <div className="input-wrapper">
+      {/* Input Bar */}
+      <div className="sanctuary-input-area">
+        <form onSubmit={handleSendMessage} className="sanctuary-input-form">
+          <div className="sanctuary-input-glow" />
+          <div className="sanctuary-input-bar">
             <input
+              ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={conversationPhase > 2 ? 'Analyzing...' : 'Share your thoughts...'}
-              className="chat-input"
+              placeholder={conversationPhase > 2 ? 'Analyzing your responses...' : 'Share your thoughts...'}
               disabled={conversationPhase > 2 || loading}
+              className="sanctuary-input"
             />
-            <button type="submit" className="send-btn" disabled={conversationPhase > 2 || loading}>
-              <span className="material-symbols-rounded" style={{ fontSize: 20 }}>send</span>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingRight: 6 }}>
+              <span style={{ fontSize: '0.6rem', fontFamily: 'Plus Jakarta Sans, sans-serif', color: 'rgba(133,148,142,0.4)', whiteSpace: 'nowrap' }}>
+                {input.length} / 2000
+              </span>
+              <button
+                type="submit"
+                disabled={conversationPhase > 2 || loading || !input.trim()}
+                className="sanctuary-send-btn"
+              >
+                <span className="material-symbols-rounded" style={{ fontSize: 20 }}>arrow_upward</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>
