@@ -8,7 +8,9 @@ export default function Results() {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem('lastCheckIn');
+      let email = 'default';
+      try { email = JSON.parse(localStorage.getItem('user'))?.email || 'default'; } catch {}
+      const raw = localStorage.getItem(`lastCheckIn_${email}`);
       if (!raw) {
         setMissing(true);
         return;

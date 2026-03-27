@@ -1,28 +1,48 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="dark" lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0A0E1A" />
-    <meta
-      name="description"
-      content="AYASA — Your AI-powered Digital Sanctuary for emotional wellness and stress detection."
-    />
+    <meta name="description" content="AYASA — Your AI-powered Digital Sanctuary for emotional wellness and stress detection." />
     <title>AYASA — Digital Sanctuary</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Serif:ital,wght@0,300;0,400;0,700;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
-      rel="stylesheet"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Serif:ital,wght@0,300;0,400;0,700;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+      tailwind.config = {
+        corePlugins: { preflight: false },
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container-high":"#262a37","secondary-container":"#4f319c",
+              "on-surface-variant":"#bacac3","inverse-surface":"#dfe2f3",
+              "surface-container":"#1b1f2c","on-background":"#dfe2f3",
+              "on-secondary-container":"#bea8ff","outline-variant":"#3c4a45",
+              "error":"#ffb4ab","surface-tint":"#38debb","tertiary":"#b2cfff",
+              "surface":"#0f131f","surface-container-low":"#171b28",
+              "on-surface":"#dfe2f3","primary-container":"#00c9a7",
+              "secondary-fixed-dim":"#cebdff","surface-dim":"#0f131f",
+              "primary-fixed-dim":"#38debb","secondary":"#cebdff",
+              "surface-bright":"#353946","background":"#0f131f",
+              "surface-container-lowest":"#0a0e1a","primary":"#44e5c2",
+              "tertiary-container":"#80b4ff","on-primary":"#00382d",
+              "outline":"#85948e","surface-variant":"#313442",
+              "surface-container-highest":"#313442"
+            },
+            fontFamily: {
+              headline: ["Noto Serif"],
+              body: ["Inter"],
+              label: ["Plus Jakarta Sans"]
+            }
+          }
+        }
+      }
+    </script>
     <style>
       html, body { background: #0A0E1A; margin: 0; padding: 0; }
     </style>

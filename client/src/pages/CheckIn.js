@@ -26,6 +26,19 @@ export default function CheckIn() {
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
 
+  const getUserEmail = () => {
+    try { return JSON.parse(localStorage.getItem('user'))?.email || 'default'; }
+    catch { return 'default'; }
+  };
+
+  const saveCheckIn = (data) => {
+    const email = getUserEmail();
+    localStorage.setItem(`lastCheckIn_${email}`, JSON.stringify(data));
+    const existing = JSON.parse(localStorage.getItem(`history_${email}`) || '[]');
+    existing.unshift(data);
+    localStorage.setItem(`history_${email}`, JSON.stringify(existing));
+  };
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
@@ -96,10 +109,10 @@ export default function CheckIn() {
             confidence: result.confidence || 80,
             ayasaResponse: result.ayasaResponse || '',
           };
-          localStorage.setItem('lastCheckIn', JSON.stringify(fullUserData));
+          saveCheckIn(fullUserData);
         } catch (err) {
           const levels = ['Low', 'Moderate', 'High'];
-          localStorage.setItem('lastCheckIn', JSON.stringify({
+          saveCheckIn({
             feeling: userData.feeling,
             trigger: userData.trigger,
             physical: input,
@@ -108,7 +121,7 @@ export default function CheckIn() {
             emotion: 'unknown',
             confidence: 80,
             ayasaResponse: 'I was unable to reach the analysis server. Please try again when the ML backend is running.',
-          }));
+          });
         } finally {
           setLoading(false);
           navigate('/results');
