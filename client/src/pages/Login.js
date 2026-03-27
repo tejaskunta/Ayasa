@@ -3,20 +3,43 @@ import { useNavigate, Link } from 'react-router-dom';
 import '../styles/pages.css';
 
 export default function Login() {
-  const [formData, setFormData] = useState({
-    email: 'user@example.com',
-    password: '••••••••'
-  });
+  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [error, setError]       = useState('');
+  const [loading, setLoading]   = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
+    setError('');
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    localStorage.setItem('user', JSON.stringify({ email: formData.email, fullName: 'Demo User' }));
-    navigate('/home');
+    setError('');
+    setLoading(true);
+
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, password: formData.password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Invalid email or password.');
+        return;
+      }
+
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      navigate('/home');
+    } catch (err) {
+      setError('Cannot reach the server. Please make sure the backend is running.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -55,6 +78,19 @@ export default function Login() {
         <div className="auth-card">
           <h1>Welcome back</h1>
           <p>Sign in to continue your wellness journey</p>
+
+          {error && (
+            <div style={{
+              background: 'rgba(255,180,171,0.1)', border: '1px solid rgba(255,180,171,0.25)',
+              borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1.25rem',
+              color: '#ffb4ab', fontSize: '0.85rem', fontFamily: 'DM Sans, sans-serif',
+              display: 'flex', alignItems: 'center', gap: 8
+            }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 18, flexShrink: 0 }}>error</span>
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label>Email</label>
@@ -63,7 +99,9 @@ export default function Login() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
+                placeholder="your@email.com"
                 required
+                autoComplete="email"
               />
             </div>
             <div className="form-group">
@@ -73,17 +111,22 @@ export default function Login() {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
+                placeholder="Enter your password"
                 required
+                autoComplete="current-password"
               />
             </div>
-            <button type="submit" className="btn-primary">
-              <span className="material-symbols-rounded" style={{ fontSize: 18 }}>login</span>
-              Sign In
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading
+                ? <span className="material-symbols-rounded" style={{ fontSize: 18 }}>progress_activity</span>
+                : <span className="material-symbols-rounded" style={{ fontSize: 18 }}>login</span>}
+              {loading ? 'Signing in...' : 'Sign In'}
             </button>
             <p className="auth-link" style={{ marginTop: '1.5rem' }}>
               Don't have an account? <Link to="/register">Create one</Link>
             </p>
           </form>
+
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: '1.5rem', fontSize: '0.68rem', color: 'rgba(68,229,194,0.35)', textTransform: 'uppercase', letterSpacing: '0.12em', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
             <span className="material-symbols-rounded" style={{ fontSize: 14, color: 'rgba(68,229,194,0.35)' }}>lock</span>
             256-bit encrypted &amp; secure

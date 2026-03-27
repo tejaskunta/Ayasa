@@ -4,27 +4,57 @@ import '../styles/pages.css';
 
 export default function Register() {
   const [formData, setFormData] = useState({
-    fullName: 'Jane Doe',
-    email: 'jane@example.com',
-    password: '••••••',
-    confirmPassword: '••••••'
+    fullName: '', email: '', password: '', confirmPassword: ''
   });
+  const [error, setError]     = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
+    setError('');
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (formData.password === formData.confirmPassword) {
-      localStorage.setItem('user', JSON.stringify({
-        fullName: formData.fullName,
-        email: formData.email
-      }));
+    setError('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Registration failed. Please try again.');
+        return;
+      }
+
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
       navigate('/home');
-    } else {
-      alert('Passwords do not match');
+    } catch (err) {
+      setError('Cannot reach the server. Please make sure the backend is running.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -64,6 +94,19 @@ export default function Register() {
         <div className="auth-card">
           <h1>Create Account</h1>
           <p>Start your wellness journey today</p>
+
+          {error && (
+            <div style={{
+              background: 'rgba(255,180,171,0.1)', border: '1px solid rgba(255,180,171,0.25)',
+              borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1.25rem',
+              color: '#ffb4ab', fontSize: '0.85rem', fontFamily: 'DM Sans, sans-serif',
+              display: 'flex', alignItems: 'center', gap: 8
+            }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 18, flexShrink: 0 }}>error</span>
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label>Full Name</label>
@@ -72,7 +115,9 @@ export default function Register() {
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
+                placeholder="Jane Doe"
                 required
+                autoComplete="name"
               />
             </div>
             <div className="form-group">
@@ -82,7 +127,9 @@ export default function Register() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
+                placeholder="your@email.com"
                 required
+                autoComplete="email"
               />
             </div>
             <div className="form-row">
@@ -93,7 +140,9 @@ export default function Register() {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
+                  placeholder="Min. 6 chars"
                   required
+                  autoComplete="new-password"
                 />
               </div>
               <div className="form-group">
@@ -103,13 +152,17 @@ export default function Register() {
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
+                  placeholder="Repeat password"
                   required
+                  autoComplete="new-password"
                 />
               </div>
             </div>
-            <button type="submit" className="btn-primary">
-              <span className="material-symbols-rounded" style={{ fontSize: 18 }}>person_add</span>
-              Create Account
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading
+                ? <span className="material-symbols-rounded" style={{ fontSize: 18 }}>progress_activity</span>
+                : <span className="material-symbols-rounded" style={{ fontSize: 18 }}>person_add</span>}
+              {loading ? 'Creating account...' : 'Create Account'}
             </button>
             <p className="auth-link" style={{ marginTop: '1.5rem' }}>
               Already have an account? <Link to="/login">Sign in</Link>
