@@ -7,6 +7,7 @@ import Home from './pages/Home';
 import CheckIn from './pages/CheckIn';
 import Results from './pages/Results';
 import History from './pages/History';
+import SplashCursor from './SplashCursor';
 
 function App() {
   const isLoggedIn = () => {
@@ -15,6 +16,7 @@ function App() {
 
   return (
     <Router>
+      <SplashCursor />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
