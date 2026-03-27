@@ -10,9 +10,7 @@ import History from './pages/History';
 import SplashCursor from './SplashCursor';
 
 function App() {
-  const isLoggedIn = () => {
-    return localStorage.getItem('token') !== null && localStorage.getItem('user') !== null;
-  };
+  const isLoggedIn = !!(localStorage.getItem('token') && localStorage.getItem('user'));
 
   return (
     <Router>
@@ -23,19 +21,19 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route
           path="/home"
-          element={isLoggedIn() ? <Home /> : <Navigate to="/login" />}
+          element={isLoggedIn ? <Home /> : <Navigate to="/login" />}
         />
         <Route
           path="/checkin"
-          element={isLoggedIn() ? <CheckIn /> : <Navigate to="/login" />}
+          element={isLoggedIn ? <CheckIn /> : <Navigate to="/login" />}
         />
         <Route
           path="/results"
-          element={isLoggedIn() ? <Results /> : <Navigate to="/login" />}
+          element={isLoggedIn ? <Results /> : <Navigate to="/login" />}
         />
         <Route
           path="/history"
-          element={isLoggedIn() ? <History /> : <Navigate to="/login" />}
+          element={isLoggedIn ? <History /> : <Navigate to="/login" />}
         />
       </Routes>
     </Router>

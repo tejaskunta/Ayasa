@@ -34,7 +34,7 @@ export default function Login() {
 
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
-      navigate('/home');
+      window.location.href = '/home';
     } catch (err) {
       setError('Cannot reach the server. Please make sure the backend is running.');
     } finally {
