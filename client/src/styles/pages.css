@@ -1799,7 +1799,15 @@ body {
   flex: 1; border: none; background: transparent;
   font-family: 'DM Sans', sans-serif;
   font-size: 0.92rem; color: #dfe2f3;
-  outline: none; padding: 0.65rem 0;
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-appearance: none;
+  padding: 0.65rem 0;
+}
+.sanctuary-input:focus,
+.sanctuary-input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
 }
 .sanctuary-input::placeholder {
   color: rgba(133,148,142,0.3);
