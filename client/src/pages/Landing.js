@@ -1,8 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-const filled = { fontVariationSettings: "'FILL' 1" };
-
 export default function Landing() {
   const isLoggedIn = !!localStorage.getItem('token');
 
@@ -61,33 +59,6 @@ export default function Landing() {
           </div>
         </div>
       </header>
-
-      {/* ── Marquee Strip ───────────────────── */}
-      <section className="py-12 overflow-hidden" style={{ background: '#0a0e1a' }}>
-        <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', display: 'flex' }}>
-          <div className="flex gap-8 px-4" style={{ animation: 'scroll 40s linear infinite' }}>
-            {[
-              '"I didn\'t know I was stressed until AYASA flagged my typing shift."',
-              '"A sanctuary in the noise of my daily workflow."',
-              '"It understands the pressure I can\'t even name yet."',
-              '"The first AI that actually feels empathetic."',
-            ].map((q, i) => (
-              <React.Fragment key={i}>
-                <div className="px-8 py-4 rounded-full text-sm italic font-light flex-shrink-0" style={{ background: 'rgba(49,52,66,0.1)', backdropFilter: 'blur(40px)', border: '1px solid rgba(133,148,142,0.1)' }}>{q}</div>
-              </React.Fragment>
-            ))}
-            {[
-              '"I didn\'t know I was stressed until AYASA flagged my typing shift."',
-              '"A sanctuary in the noise of my daily workflow."',
-              '"It understands the pressure I can\'t even name yet."',
-              '"The first AI that actually feels empathetic."',
-            ].map((q, i) => (
-              <div key={`d${i}`} className="px-8 py-4 rounded-full text-sm italic font-light flex-shrink-0" style={{ background: 'rgba(49,52,66,0.1)', backdropFilter: 'blur(40px)', border: '1px solid rgba(133,148,142,0.1)' }}>{q}</div>
-            ))}
-          </div>
-        </div>
-        <style>{`@keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}`}</style>
-      </section>
 
       {/* ── How It Works ────────────────────── */}
       <section id="how-it-works" className="py-32 px-6 max-w-7xl mx-auto">
@@ -236,33 +207,6 @@ export default function Landing() {
               <span className={`material-symbols-outlined text-3xl ${f.color} mb-6 block`}>{f.icon}</span>
               <h4 className="font-bold mb-2">{f.title}</h4>
               <p className="text-sm text-on-surface-variant font-light">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Testimonials ───────────────────── */}
-      <section className="py-32 px-6 max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row gap-12 items-center justify-center">
-          {[
-            { q: '"I used to reach Friday feeling completely drained. Now, AYASA nudges me on Tuesday when I start losing balance."', name: 'Sneha P.', role: 'Computer Science Student', initials: 'SP', rotate: '-rotate-3', border: 'border-secondary/30' },
-            { q: '"It\'s the most thoughtful tool I\'ve used. It doesn\'t judge; it just observes what I\'m too busy to notice."', name: 'Arjun K.', role: 'Engineering Student', initials: 'AK', rotate: 'rotate-2 md:translate-y-12', border: 'border-primary/20' },
-          ].map((t) => (
-            <div key={t.name} className={`max-w-md ${t.rotate}`}>
-              <div className={`p-10 rounded-[2.5rem] ${t.border} relative`} style={{ background: 'rgba(49,52,66,0.1)', backdropFilter: 'blur(40px)', border: '1px solid rgba(133,148,142,0.15)' }}>
-                <span className="material-symbols-outlined text-6xl text-white/10 absolute top-6 right-8">format_quote</span>
-                <div className="flex gap-1 mb-6">
-                  {[1,2,3,4,5].map((s) => <span key={s} className="material-symbols-outlined text-primary text-sm" style={filled}>star</span>)}
-                </div>
-                <p className="font-serif text-xl italic leading-relaxed mb-8">{t.q}</p>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center font-bold text-xs">{t.initials}</div>
-                  <div>
-                    <p className="font-bold text-sm">{t.name}</p>
-                    <p className="text-xs text-on-surface-variant uppercase tracking-tighter">{t.role}</p>
-                  </div>
-                </div>
-              </div>
             </div>
           ))}
         </div>
