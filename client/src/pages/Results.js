@@ -37,7 +37,7 @@ export default function Results() {
             <span className="material-symbols-rounded" style={{ fontSize: 36, color: '#85948e' }}>search_off</span>
           </div>
           <p style={{ fontSize: '1.1rem', color: '#85948e', marginBottom: '1.5rem' }}>No check-in data found.</p>
-          <Link to="/checkin" className="btn-primary" style={{ maxWidth: 240, margin: '0 auto', display: 'block' }}>Start a Check-in</Link>
+          <Link to="/home" className="btn-primary" style={{ maxWidth: 240, margin: '0 auto', display: 'block' }}>Open Main Chat</Link>
         </div>
       </div>
     );
@@ -180,13 +180,13 @@ export default function Results() {
         </div>
 
         <div className="nav-buttons-row">
-          <Link to="/checkin" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <Link to="/home" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <span className="material-symbols-rounded" style={{ fontSize: 18 }}>forum</span>
-            Back to Chat
+            Open Main Chat
           </Link>
-          <Link to="/history" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <Link to="/home" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <span className="material-symbols-rounded" style={{ fontSize: 18 }}>timeline</span>
-            View History
+            Open Main Chat
           </Link>
           <Link to="/home" className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <span className="material-symbols-rounded" style={{ fontSize: 18 }}>home</span>

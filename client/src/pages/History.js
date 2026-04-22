@@ -157,7 +157,7 @@ export default function History() {
         </div>
         <nav style={{ display: 'flex', gap: 24, fontFamily: 'DM Sans, sans-serif', fontSize: '0.85rem', fontWeight: 600 }}>
           <Link to="/home" style={{ color: '#85948e', textDecoration: 'none' }}>Dashboard</Link>
-          <Link to="/checkin" style={{ color: '#85948e', textDecoration: 'none' }}>Journal</Link>
+          <Link to="/home" style={{ color: '#85948e', textDecoration: 'none' }}>Chat</Link>
           <span style={{ color: '#4aa3ff', fontWeight: 600, borderBottom: '2px solid #4aa3ff', paddingBottom: 2 }}>History</span>
         </nav>
       </header>
@@ -274,9 +274,9 @@ export default function History() {
               <>
                 <p style={{ color: '#1b1f2c', fontSize: '1.1rem', fontWeight: 600, marginBottom: 6 }}>No check-ins yet</p>
                 <p style={{ color: '#85948e', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Complete your first stress check to see your journey here.</p>
-                <Link to="/checkin" className="hist-cta-btn">
+                <Link to="/home" className="hist-cta-btn">
                   <span className="material-symbols-rounded" style={{ fontSize: 18 }}>play_arrow</span>
-                  Start Your First Check-in
+                  Open Main Chat
                 </Link>
               </>
             ) : (
@@ -325,7 +325,7 @@ export default function History() {
                     <span style={{ fontSize: '0.7rem', fontFamily: 'Plus Jakarta Sans, sans-serif', color: '#85948e' }}>
                       {item.confidence ? `${item.confidence}% confidence` : ''}
                     </span>
-                    <Link to="/checkin" className="hist-card-link">
+                    <Link to="/home" className="hist-card-link">
                       Continue Chat
                       <span className="material-symbols-rounded" style={{ fontSize: 14 }}>arrow_forward</span>
                     </Link>
@@ -338,9 +338,9 @@ export default function History() {
 
         {/* Bottom Actions */}
         <div className="hist-bottom-actions">
-          <Link to="/checkin" className="hist-action-btn primary">
+          <Link to="/home" className="hist-action-btn primary">
             <span className="material-symbols-rounded" style={{ fontSize: 18 }}>add_circle</span>
-            New Check-in
+            New Chat Entry
           </Link>
           <Link to="/home" className="hist-action-btn secondary">
             <span className="material-symbols-rounded" style={{ fontSize: 18 }}>home</span>

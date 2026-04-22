@@ -13,6 +13,23 @@ function getUser() {
   catch { return {}; }
 }
 
+function getMessageStoreKey() {
+  const email = getUserEmail();
+  return `ayasa_chat_history:${email}`;
+}
+
+function getToken() {
+  return localStorage.getItem('token') || '';
+}
+
+function authHeaders(extra = {}) {
+  const token = getToken();
+  return {
+    ...extra,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 function safeDate(value) {
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
@@ -166,11 +183,202 @@ function stressClass(level) {
   return level === 'High' ? 'high' : level === 'Low' ? 'low' : 'moderate';
 }
 
+function pickRandom(items = []) {
+  if (!items.length) return null;
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function pickExerciseForEmotion(emotion, stressLevel) {
+  const safeEmotion = String(emotion || '').toLowerCase();
+  const safeStress = normalizeStressLevel(stressLevel);
+
+  const lowPool = ['grounding', 'gratitude', 'breathing'];
+  const moderatePool = ['thoughtDump', 'reframe', 'controlSplit'];
+  const highPool = ['boxBreathing', 'safeLoop', 'oneStep'];
+
+  if (safeEmotion.includes('anger') || safeEmotion.includes('fear')) {
+    return pickRandom(highPool);
+  }
+  if (safeEmotion.includes('sad')) {
+    return pickRandom(moderatePool);
+  }
+  if (safeEmotion.includes('joy') || safeEmotion.includes('love')) {
+    return pickRandom(lowPool);
+  }
+
+  if (safeStress === 'High') return pickRandom(highPool);
+  if (safeStress === 'Low') return pickRandom(lowPool);
+  return pickRandom(moderatePool);
+}
+
+function GroundingExercise() {
+  const steps = [
+    '5 things you see',
+    '4 things you feel',
+    '3 things you hear',
+    '2 things you smell',
+    '1 thing you taste',
+  ];
+  const [checked, setChecked] = useState(Array(5).fill(false));
+
+  return (
+    <div className="mainchat-exercise-card">
+      <h5>5-4-3-2-1 Grounding</h5>
+      {steps.map((step, i) => (
+        <label key={step} className="mainchat-check-row">
+          <input
+            type="checkbox"
+            checked={checked[i]}
+            onChange={() => {
+              const next = [...checked];
+              next[i] = !next[i];
+              setChecked(next);
+            }}
+          />
+          <span>{step}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function GratitudeExercise() {
+  const [items, setItems] = useState([]);
+  const [draft, setDraft] = useState('');
+
+  return (
+    <div className="mainchat-exercise-card">
+      <h5>3 Small Wins</h5>
+      <input
+        className="mainchat-exercise-input"
+        value={draft}
+        placeholder="Type and press Enter"
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const value = draft.trim();
+            if (!value) return;
+            setItems((prev) => [...prev, value].slice(0, 12));
+            setDraft('');
+          }
+        }}
+      />
+      <div className="mainchat-chip-wrap">
+        {items.map((item, i) => (
+          <span key={`${item}-${i}`} className="mainchat-chip">{item}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BreathingCircle() {
+  return (
+    <div className="mainchat-exercise-card">
+      <h5>Breathing Circle</h5>
+      <div className="mainchat-breath-circle" />
+    </div>
+  );
+}
+
+function ThoughtDump() {
+  const [time, setTime] = useState(30);
+  useEffect(() => {
+    if (time <= 0) return undefined;
+    const timer = setTimeout(() => setTime((prev) => prev - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [time]);
+
+  return (
+    <div className="mainchat-exercise-card">
+      <h5>Dump Your Thoughts ({time}s)</h5>
+      <textarea className="mainchat-exercise-area" placeholder="Type freely..." />
+      <button type="button" className="mainchat-mini-btn" onClick={() => setTime(30)}>Restart</button>
+    </div>
+  );
+}
+
+function Reframe() {
+  return (
+    <div className="mainchat-exercise-card">
+      <h5>Reframe Thought</h5>
+      <div className="mainchat-ex-grid two">
+        <textarea className="mainchat-exercise-area" placeholder="Stress thought" />
+        <textarea className="mainchat-exercise-area" placeholder="Rewrite realistically" />
+      </div>
+    </div>
+  );
+}
+
+function ControlSplit() {
+  return (
+    <div className="mainchat-exercise-card">
+      <h5>Control Split</h5>
+      <div className="mainchat-ex-grid two">
+        <textarea className="mainchat-exercise-area" placeholder="Can control" />
+        <textarea className="mainchat-exercise-area" placeholder="Can't control" />
+      </div>
+    </div>
+  );
+}
+
+function BoxBreathing() {
+  return (
+    <div className="mainchat-exercise-card">
+      <h5>Box Breathing</h5>
+      <div className="mainchat-box-breath" />
+    </div>
+  );
+}
+
+function SafeLoop() {
+  return (
+    <div className="mainchat-exercise-card">
+      <h5>Safe Statement Loop</h5>
+      <div className="mainchat-safe-loop">I&apos;m safe right now. This will pass.</div>
+    </div>
+  );
+}
+
+function OneStep() {
+  const [step, setStep] = useState('');
+  return (
+    <div className="mainchat-exercise-card">
+      <h5>Just One Step</h5>
+      <input
+        className="mainchat-exercise-input"
+        value={step}
+        onChange={(e) => setStep(e.target.value)}
+        placeholder="Type one small action"
+      />
+    </div>
+  );
+}
+
+function ExercisePanel({ exerciseKey, stressLevel }) {
+  const normalized = normalizeStressLevel(stressLevel);
+
+  return (
+    <div className={`mainchat-exercise-panel ${normalized.toLowerCase()}`}>
+      {exerciseKey === 'grounding' && <GroundingExercise />}
+      {exerciseKey === 'gratitude' && <GratitudeExercise />}
+      {exerciseKey === 'breathing' && <BreathingCircle />}
+      {exerciseKey === 'thoughtDump' && <ThoughtDump />}
+      {exerciseKey === 'reframe' && <Reframe />}
+      {exerciseKey === 'controlSplit' && <ControlSplit />}
+      {exerciseKey === 'boxBreathing' && <BoxBreathing />}
+      {exerciseKey === 'safeLoop' && <SafeLoop />}
+      {exerciseKey === 'oneStep' && <OneStep />}
+    </div>
+  );
+}
+
 export default function Home() {
   const navigate = useNavigate();
-  const user = useMemo(() => getUser(), []);
-  const userEmail = useMemo(() => getUserEmail(), []);
-  const displayName = useMemo(() => (user.fullName || 'Friend').split(' ')[0], [user]);
+  const [currentUser, setCurrentUser] = useState(() => getUser());
+  const userEmail = useMemo(() => currentUser.email || getUserEmail(), [currentUser]);
+  const displayName = useMemo(() => (currentUser.fullName || 'Friend').split(' ')[0], [currentUser]);
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
@@ -192,29 +400,77 @@ export default function Home() {
   const [historyEntries, setHistoryEntries] = useState([]);
   const [selectedEntryId, setSelectedEntryId] = useState('');
   const [insights, setInsights] = useState(buildLocalInsights([]));
-  const [aiRuntime, setAiRuntime] = useState({ loading: true, available: false, geminiActive: false });
+  const [aiRuntime, setAiRuntime] = useState({ loading: true, available: false, llmActive: false });
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [profileName, setProfileName] = useState(() => getUser().fullName || '');
+  const [profileSaved, setProfileSaved] = useState('');
+  const [llmApiKey, setLlmApiKey] = useState(() => localStorage.getItem('llmApiKey') || '');
+  const [hfToken, setHfToken] = useState(() => localStorage.getItem('hfToken') || '');
+  const [keysSaved, setKeysSaved] = useState('');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [pendingExercise, setPendingExercise] = useState(null);
+  const exerciseOfferShownRef = useRef(false);
   const endRef = useRef(null);
   const lastWarningRef = useRef('');
+
+  const loadStoredMessages = () => {
+    try {
+      const raw = localStorage.getItem(getMessageStoreKey());
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed) || !parsed.length) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  };
+
+  const hasChatStarted = useMemo(() => messages.some((item) => item.role === 'user'), [messages]);
 
   const selectedEntry = useMemo(
     () => historyEntries.find((item) => String(item.id) === String(selectedEntryId)) || historyEntries[0] || null,
     [historyEntries, selectedEntryId]
   );
 
+  const emotionDistribution = useMemo(() => {
+    if (!historyEntries.length) return [];
+    const counts = historyEntries.reduce((acc, item) => {
+      const key = String(item.emotion || 'unknown').toLowerCase();
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    const total = historyEntries.length;
+    return Object.entries(counts)
+      .map(([emotion, count]) => ({
+        emotion,
+        count,
+        percent: Math.round((count / total) * 100),
+      }))
+      .sort((a, b) => b.percent - a.percent)
+      .slice(0, 5);
+  }, [historyEntries]);
+
   const pushMessage = (message) => {
-    setMessages((prev) => [
+    setMessages((prev) => {
+      const next = [
       ...prev,
       {
         id: `${message.role}-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`,
         time: new Date().toISOString(),
         ...message,
       },
-    ]);
+      ];
+      localStorage.setItem(getMessageStoreKey(), JSON.stringify(next));
+      return next;
+    });
   };
 
   const fetchInsights = async (seedHistory = historyEntries) => {
     try {
-      const response = await fetch(`/api/checkin/insights?userId=${encodeURIComponent(userEmail)}`);
+      const response = await fetch('/api/checkin/insights', {
+        headers: authHeaders(),
+      });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data?.insights) throw new Error('Insights unavailable');
       return data.insights;
@@ -225,7 +481,9 @@ export default function Home() {
 
   const loadHistory = async () => {
     try {
-      const response = await fetch(`/api/checkin/history?userId=${encodeURIComponent(userEmail)}`);
+      const response = await fetch('/api/checkin/history', {
+        headers: authHeaders(),
+      });
       const data = await response.json().catch(() => ({}));
       const normalized = Array.isArray(data?.history)
         ? data.history.map((item, index) => normalizeEntry(item, index)).sort((a, b) => {
@@ -251,14 +509,24 @@ export default function Home() {
       setAiRuntime({
         loading: false,
         available: Boolean(data.available),
-        geminiActive: Boolean(data.geminiActive),
+        llmActive: Boolean(data.llmActive ?? data.geminiActive),
       });
     } catch {
-      setAiRuntime({ loading: false, available: false, geminiActive: false });
+      setAiRuntime({ loading: false, available: false, llmActive: false });
     }
   };
 
   useEffect(() => {
+    if (!getToken()) {
+      navigate('/login');
+      return undefined;
+    }
+
+    const storedMessages = loadStoredMessages();
+    if (storedMessages) {
+      setMessages(storedMessages);
+    }
+
     loadHistory();
     loadRuntime();
     const timer = setInterval(loadRuntime, 30000);
@@ -276,22 +544,105 @@ export default function Home() {
     navigate('/login');
   };
 
+  const handleProfileSave = async () => {
+    const nextName = profileName.trim();
+    if (!nextName) return;
+
+    try {
+      const response = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({
+          email: userEmail,
+          fullName: nextName,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Could not save profile');
+      }
+
+      const updatedUser = {
+        ...getUser(),
+        ...(data?.user || {}),
+        fullName: nextName,
+      };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setCurrentUser(updatedUser);
+      setProfileSaved('Saved');
+      setTimeout(() => setProfileSaved(''), 1500);
+    } catch {
+      setProfileSaved('Failed');
+      setTimeout(() => setProfileSaved(''), 1500);
+    }
+  };
+
+  const handleSaveApiKeys = async () => {
+    const nextLlm = llmApiKey.trim();
+    const nextHf = hfToken.trim();
+    localStorage.setItem('llmApiKey', nextLlm);
+    localStorage.setItem('hfToken', nextHf);
+
+    try {
+      const response = await fetch('/api/auth/keys', {
+        method: 'PUT',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({
+          llmApiKey: nextLlm,
+          hfToken: nextHf,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('Key save failed');
+      }
+      setKeysSaved('Saved');
+      setTimeout(() => setKeysSaved(''), 1500);
+    } catch {
+      setKeysSaved('Failed');
+      setTimeout(() => setKeysSaved(''), 1500);
+    }
+  };
+
   const submitMessage = async (rawText) => {
     const text = rawText.trim();
     if (!text || loading) return;
 
     pushMessage({ role: 'user', type: 'text', text });
     setInput('');
+
+    if (/\b(no|not now|later|skip)\b/i.test(text)) {
+      setPendingExercise(null);
+      return;
+    }
+
+    const isExerciseCommand = /\b(start|begin|yes|ok|okay|sure)\b[\w\s]*\bexercise\b/i.test(text) || /^exercise$/i.test(text);
+    if (isExerciseCommand) {
+      const exerciseStress = normalizeStressLevel(
+        pendingExercise?.stressLevel || selectedEntry?.stressLevel || historyEntries[0]?.stressLevel || 'Moderate'
+      );
+      const exerciseKey = pendingExercise?.exerciseKey || pickExerciseForEmotion(selectedEntry?.emotion, exerciseStress);
+      pushMessage({
+        role: 'assistant',
+        type: 'exercise',
+        text: `Starting a ${exerciseStress.toLowerCase()} exercise for you now.`,
+        exerciseStress,
+        exerciseKey,
+      });
+      setPendingExercise(null);
+      exerciseOfferShownRef.current = true;
+      return;
+    }
+
     setLoading(true);
 
     try {
       const response = await fetch('/api/checkin/submit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           userInput: text,
-          userId: userEmail,
-          geminiApiKey: localStorage.getItem('geminiApiKey') || '',
+          llmApiKey: llmApiKey.trim(),
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -307,12 +658,26 @@ export default function Home() {
         type: 'analysis',
         text: result.ayasaResponse || 'Analysis completed.',
         meta: {
-          stressLevel: result.stressLevel,
           emotion: result.emotion,
-          confidence: result.confidence,
         },
-        resources: result.resources,
       });
+
+      const shouldOfferExercise = !exerciseOfferShownRef.current && result.emotion
+        ? (['anger', 'fear', 'sadness'].some((key) => String(result.emotion).toLowerCase().includes(key))
+          ? Math.random() < 0.65
+          : Math.random() < 0.2)
+        : false;
+
+      if (shouldOfferExercise) {
+        const exerciseKey = pickExerciseForEmotion(result.emotion, result.stressLevel);
+        setPendingExercise({ exerciseKey, stressLevel: result.stressLevel, emotion: result.emotion });
+        exerciseOfferShownRef.current = true;
+        pushMessage({
+          role: 'assistant',
+          type: 'exercise-offer',
+          text: 'Would you like to start a quick exercise now?',
+        });
+      }
 
       const nextInsights = await fetchInsights(updatedHistory);
       setInsights(nextInsights);
@@ -352,80 +717,212 @@ export default function Home() {
       pushMessage({ role: 'assistant', type: 'insight', text: nextInsights.contextualFeedback });
       return;
     }
+    if (key === 'menu') {
+      pushMessage({
+        role: 'assistant',
+        type: 'insight',
+        text: 'Reset menu: choose Anxiety, Sleep, Workload, Relationships, or a fresh stress check. You can type any of these to continue.',
+      });
+      return;
+    }
     pushMessage({ role: 'assistant', type: 'insight', text: nextInsights.weeklySummary });
   };
 
   const runtimeLabel = aiRuntime.loading
     ? 'Checking AI status'
     : aiRuntime.available
-      ? (aiRuntime.geminiActive ? 'AI online' : 'AI fallback mode')
+      ? (aiRuntime.llmActive ? 'AI online' : 'Fallback mode')
       : 'AI offline';
 
+  const handleComposerKeyDown = (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      submitMessage(input);
+    }
+  };
+
+  const pageClassName = [
+    'mainchat-page',
+    sidebarCollapsed ? 'sidebar-collapsed' : '',
+  ].join(' ').trim();
+
   return (
-    <div className="mainchat-page">
+    <div className={pageClassName}>
       <aside className="mainchat-sidebar">
         <div className="mainchat-sidebar-head">
           <Link to="/" className="mainchat-logo">
             <span className="material-symbols-rounded">diversity_1</span>
-            AYASA
+            {!sidebarCollapsed && 'AYASA'}
           </Link>
-          <button className="mainchat-logout" onClick={handleLogout}>Logout</button>
-        </div>
-
-        <div className="mainchat-history-title">Conversation History</div>
-        <div className="mainchat-history-list">
-          {historyEntries.length === 0 && <p className="mainchat-empty">No sessions yet. Start chatting to build your timeline.</p>}
-          {historyEntries.map((entry) => (
+          <div className="mainchat-sidebar-head-actions">
             <button
-              key={entry.id}
-              className={`mainchat-history-item${String(selectedEntryId) === String(entry.id) ? ' active' : ''}`}
-              onClick={() => setSelectedEntryId(String(entry.id))}
+              className="mainchat-icon-btn"
+              type="button"
+              onClick={() => {
+                setSidebarCollapsed((prev) => !prev);
+              }}
+              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              <div className="mainchat-history-item-head">
-                <span className={`mainchat-stress-badge ${stressClass(entry.stressLevel)}`}>{entry.stressLevel}</span>
-                <span className="mainchat-history-time">{formatTimestamp(entry.timestamp)}</span>
-              </div>
-              <p>{entry.userInput || 'Conversation entry'}</p>
+              <span className="material-symbols-rounded">{sidebarCollapsed ? 'left_panel_open' : 'left_panel_close'}</span>
             </button>
-          ))}
+            {!sidebarCollapsed && <button className="mainchat-logout" onClick={handleLogout}>Logout</button>}
+          </div>
         </div>
 
-        <div className="mainchat-detail-card">
-          <h4>Details</h4>
-          {selectedEntry ? (
-            <>
-              <p><strong>Emotion:</strong> {selectedEntry.emotion || 'unknown'}</p>
-              <p><strong>Confidence:</strong> {selectedEntry.confidence || 0}%</p>
-              <p><strong>Captured:</strong> {formatTimestamp(selectedEntry.timestamp)}</p>
-              <p><strong>Resources:</strong> {selectedEntry.resources.length}</p>
-            </>
-          ) : (
-            <p>No selected session.</p>
-          )}
-        </div>
+        {!sidebarCollapsed && (
+          <div className="mainchat-sidebar-scroll">
+            <div className="mainchat-history-title">Conversation History</div>
+            <div className="mainchat-history-list">
+              {historyEntries.length === 0 && <p className="mainchat-empty">No sessions yet. Start chatting to build your timeline.</p>}
+              {historyEntries.map((entry) => (
+                <button
+                  key={entry.id}
+                  className={`mainchat-history-item${String(selectedEntryId) === String(entry.id) ? ' active' : ''}`}
+                  onClick={() => setSelectedEntryId(String(entry.id))}
+                >
+                  <div className="mainchat-history-item-head">
+                    <span className={`mainchat-stress-badge ${stressClass(entry.stressLevel)}`}>{entry.stressLevel}</span>
+                    <span className="mainchat-history-time">{formatTimestamp(entry.timestamp)}</span>
+                  </div>
+                  <div className="mainchat-history-meta">
+                    <span>Emotion: {entry.emotion || 'unknown'}</span>
+                    <span>Confidence: {entry.confidence || 0}%</span>
+                  </div>
+                  <p>{entry.userInput || 'Conversation entry'}</p>
+                </button>
+              ))}
+            </div>
 
-        <div className="mainchat-detail-card compact">
-          <h4>Insight Snapshot</h4>
-          <p>{insights.personalTrend.week}</p>
-        </div>
+            <div className="mainchat-collapsible">
+              <button
+                className="mainchat-collapse-toggle"
+                type="button"
+                onClick={() => setIsAnalyticsOpen((prev) => !prev)}
+              >
+                <span>Stress Analytics</span>
+                <span className={`material-symbols-rounded ${isAnalyticsOpen ? 'open' : ''}`}>expand_more</span>
+              </button>
+              {isAnalyticsOpen && (
+                <div className="mainchat-detail-card">
+                  <h4>Stress Snapshot</h4>
+                  {selectedEntry ? (
+                    <>
+                      <p><strong>Current Stress:</strong> {selectedEntry.stressLevel}</p>
+                      <p><strong>Emotion:</strong> {selectedEntry.emotion || 'unknown'}</p>
+                      <p><strong>Confidence:</strong> {selectedEntry.confidence || 0}%</p>
+                      <p><strong>Captured:</strong> {formatTimestamp(selectedEntry.timestamp)}</p>
+                    </>
+                  ) : (
+                    <p>No selected session.</p>
+                  )}
+                  <div className="mainchat-emotion-box">
+                    <h5>Emotion Distribution</h5>
+                    {emotionDistribution.length === 0 && <p>No emotion data yet.</p>}
+                    {emotionDistribution.map((item) => (
+                      <div key={item.emotion} className="mainchat-emotion-row">
+                        <div className="mainchat-emotion-head">
+                          <span>{item.emotion}</span>
+                          <strong>{item.percent}%</strong>
+                        </div>
+                        <div className="mainchat-emotion-bar">
+                          <span style={{ width: `${item.percent}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mainchat-collapsible">
+              <button
+                className="mainchat-collapse-toggle"
+                type="button"
+                onClick={() => setIsProfileOpen((prev) => !prev)}
+              >
+                <span>User Profile</span>
+                <span className={`material-symbols-rounded ${isProfileOpen ? 'open' : ''}`}>expand_more</span>
+              </button>
+              {isProfileOpen && (
+                <div className="mainchat-detail-card">
+                  <h4>Profile</h4>
+                  <p><strong>Email:</strong> {userEmail}</p>
+                  <label className="mainchat-profile-label" htmlFor="profileNameInput">Display Name</label>
+                  <input
+                    id="profileNameInput"
+                    className="mainchat-profile-input"
+                    type="text"
+                    value={profileName}
+                    onChange={(e) => setProfileName(e.target.value)}
+                    placeholder="Enter your name"
+                  />
+                  <div className="mainchat-profile-actions">
+                    <button type="button" onClick={handleProfileSave}>Save</button>
+                    {profileSaved && <span>{profileSaved}</span>}
+                  </div>
+
+                  <h4 className="mainchat-subtitle">API Keys</h4>
+                  <label className="mainchat-profile-label" htmlFor="llmApiKeyInput">LLM API Key (Groq)</label>
+                  <input
+                    id="llmApiKeyInput"
+                    className="mainchat-profile-input"
+                    type="password"
+                    value={llmApiKey}
+                    onChange={(e) => setLlmApiKey(e.target.value)}
+                    placeholder="Paste LLM key"
+                  />
+                  <label className="mainchat-profile-label" htmlFor="hfTokenInput">HF Token</label>
+                  <input
+                    id="hfTokenInput"
+                    className="mainchat-profile-input"
+                    type="password"
+                    value={hfToken}
+                    onChange={(e) => setHfToken(e.target.value)}
+                    placeholder="Paste HF token"
+                  />
+                  <div className="mainchat-key-indicators">
+                    <span className={`mainchat-key-pill ${llmApiKey.trim() ? 'set' : 'unset'}`}>
+                      LLM: {llmApiKey.trim() ? 'Configured' : 'Missing'}
+                    </span>
+                    <span className={`mainchat-key-pill ${hfToken.trim() ? 'set' : 'unset'}`}>
+                      HF: {hfToken.trim() ? 'Configured' : 'Missing'}
+                    </span>
+                  </div>
+                  <div className="mainchat-profile-actions">
+                    <button type="button" onClick={handleSaveApiKeys}>Save Keys</button>
+                    {keysSaved && <span>{keysSaved}</span>}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mainchat-detail-card compact">
+              <h4>Insight Snapshot</h4>
+              <p>{insights.personalTrend.week}</p>
+            </div>
+          </div>
+        )}
       </aside>
 
       <main className="mainchat-main">
         <header className="mainchat-header">
-          <div className="mainchat-top-left">ThinkAI</div>
-          <div className="mainchat-orb-shell" aria-hidden="true">
-            <Orb
-              hoverIntensity={0.08}
-              rotateOnHover
-              hue={136}
-              forceHoverState
-              backgroundColor="#eaf6f2"
-            />
-          </div>
-          <div className="mainchat-user-avatar">{displayName.charAt(0).toUpperCase()}</div>
+          <div className="mainchat-top-left" />
+          <button
+            type="button"
+            className="mainchat-user-avatar"
+            onClick={() => {
+              setIsProfileOpen(true);
+              setSidebarCollapsed(false);
+            }}
+            aria-label="Open user profile"
+            title="Open user profile"
+          >
+            {displayName.charAt(0).toUpperCase()}
+          </button>
         </header>
 
-        <section className="mainchat-hero">
+        <section className={`mainchat-hero ${hasChatStarted ? 'dismissed' : ''}`}>
           <h1>{greeting}, {displayName}</h1>
           <h2>Can I help you with anything?</h2>
           <p>Everything stays here in chat: analysis, resources, trends, and weekly summaries.</p>
@@ -435,6 +932,7 @@ export default function Home() {
                 {action.label}
               </button>
             ))}
+            <button className="mainchat-prompt-chip" onClick={() => handlePrompt('menu')}>Reset menu</button>
           </div>
           <div className="mainchat-runtime">{runtimeLabel}</div>
         </section>
@@ -444,20 +942,15 @@ export default function Home() {
             <div key={message.id} className={`mainchat-msg ${message.role === 'assistant' ? 'assistant' : 'user'} ${message.type || ''}`}>
               <div className="mainchat-msg-bubble">
                 <p>{message.text}</p>
+                {message.type === 'exercise' && (
+                  <ExercisePanel
+                    exerciseKey={message.exerciseKey}
+                    stressLevel={message.exerciseStress}
+                  />
+                )}
                 {message.meta && (
                   <div className="mainchat-meta-row">
-                    <span className={`mainchat-stress-badge ${stressClass(message.meta.stressLevel)}`}>{message.meta.stressLevel}</span>
                     <span className="mainchat-meta-pill">Emotion: {message.meta.emotion}</span>
-                    <span className="mainchat-meta-pill">Confidence: {message.meta.confidence}%</span>
-                  </div>
-                )}
-                {Array.isArray(message.resources) && message.resources.length > 0 && (
-                  <div className="mainchat-resource-grid">
-                    {message.resources.map((resource) => (
-                      <a key={`${message.id}-${resource.url}`} href={resource.url} target="_blank" rel="noreferrer">
-                        {resource.title}
-                      </a>
-                    ))}
                   </div>
                 )}
               </div>
@@ -465,11 +958,22 @@ export default function Home() {
           ))}
           {loading && (
             <div className="mainchat-msg assistant loading">
-              <div className="mainchat-msg-bubble">Analyzing your message...</div>
+              <div className="mainchat-msg-bubble"><p>Analyzing your message...</p></div>
             </div>
           )}
           <div ref={endRef} />
         </section>
+
+        <div className="mainchat-orb-dock" aria-hidden="true">
+          <Orb
+            hoverIntensity={0}
+            rotateOnHover={false}
+            paused
+            hue={136}
+            forceHoverState={false}
+            backgroundColor="#ecf3ff"
+          />
+        </div>
 
         <form
           className="mainchat-composer"
@@ -478,17 +982,19 @@ export default function Home() {
             submitMessage(input);
           }}
         >
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="How can AYASA help you today?"
-            rows={2}
-            maxLength={2000}
-          />
-          <div className="mainchat-composer-foot">
-            <span>Use shift + enter for new line</span>
-            <button type="submit" disabled={loading || !input.trim()}>
-              Send
+          <div className="mainchat-input-row">
+            <div className="mainchat-input-shell">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleComposerKeyDown}
+                placeholder="How can AYASA help you today?"
+                rows={1}
+                maxLength={2000}
+              />
+            </div>
+            <button className="mainchat-send-btn external" type="submit" disabled={loading || !input.trim()}>
+              <span className="material-symbols-rounded">arrow_upward</span>
             </button>
           </div>
         </form>

@@ -87,7 +87,7 @@ export default function CheckIn() {
 
   const loadAiRuntimeStatus = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/checkin/ml-health');
+      const response = await fetch('/api/checkin/ml-health');
       const data = await response.json().catch(() => ({}));
       return {
         loading: false,
@@ -144,7 +144,7 @@ export default function CheckIn() {
 
   const submitForAnalysis = async (userInput) => {
     const activeUserId = getUserEmail();
-    const response = await fetch('http://localhost:5000/api/checkin/submit', {
+    const response = await fetch('/api/checkin/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -437,11 +437,10 @@ export default function CheckIn() {
                 <div className="sanc-bot-content">
                   <span className="sanc-bot-label">AYASA Intelligence</span>
                   <div className="sanc-bot-bubble">
-                    <div className="sanc-bot-bubble-gradient" />
-                    <p style={{ position: 'relative', zIndex: 1 }}>{msg.text}</p>
+                    <p>{msg.text}</p>
                     {msg.showResultsLink && (
                       <div className="sanc-results-inline-wrap">
-                        <Link to="/results" className="sanc-results-inline-link">
+                        <Link to="/home" className="sanc-results-inline-link">
                           <span className="material-symbols-rounded" style={{ fontSize: 16 }}>assessment</span>
                           Open Results
                         </Link>

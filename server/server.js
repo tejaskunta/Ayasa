@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const { connectDB } = require('./config/db');
 
 const app = express();
 
@@ -8,16 +9,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// MongoDB Connection (when ready to deploy)
-// const mongoose = require('mongoose');
-// mongoose.connect(process.env.MONGODB_URI, {
-//   useNewUrlParser: true,
-//   useUnifiedTopology: true,
-// }).catch(err => console.log('MongoDB connection error:', err));
-
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/checkin', require('./routes/checkin'));
+app.use('/api/sessions', require('./routes/sessions'));
+app.use('/api/messages', require('./routes/messages'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -31,6 +27,12 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Ayasa server running on http://localhost:${PORT}`);
-});
+
+async function startServer() {
+  await connectDB();
+  app.listen(PORT, () => {
+    console.log(`Ayasa server running on http://localhost:${PORT}`);
+  });
+}
+
+startServer();

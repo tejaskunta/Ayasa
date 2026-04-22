@@ -7,16 +7,19 @@ const processSteps = [
     index: '01',
     title: 'Daily Check-In',
     desc: 'Share how you feel in a short reflection so AYASA can understand your current stress level.',
+    className: 'primary',
   },
   {
     index: '02',
     title: 'Stress Model Insight',
     desc: 'Our stress model analyzes your pattern and gives clear insights you can act on right away.',
+    className: 'wide',
   },
   {
     index: '03',
     title: 'Guided Support Plan',
     desc: 'Get practical breathing prompts and support steps that help you calm down and reset.',
+    className: 'tall',
   },
 ];
 
@@ -58,9 +61,13 @@ export default function Landing() {
               <span className="material-symbols-rounded">diversity_1</span>
               AYASA
             </Link>
-            <Link to={isLoggedIn ? '/home' : '/register'} className="therapy-contact-btn">
-              {isLoggedIn ? 'Dashboard' : 'Start Conversation'}
-            </Link>
+            <div className="therapy-nav-actions">
+              <Link to="/login" className="therapy-nav-link signin-dark">Sign In</Link>
+              <Link to="/register" className="therapy-nav-link register-light">Register</Link>
+              <Link to={isLoggedIn ? '/home' : '/register'} className="therapy-contact-btn">
+                {isLoggedIn ? 'Dashboard' : 'Start Conversation'}
+              </Link>
+            </div>
           </header>
 
           <div className="therapy-hero-content">
@@ -74,6 +81,7 @@ export default function Landing() {
             </p>
             <div className="therapy-hero-row">
               <Link to={isLoggedIn ? '/home' : '/register'} className="therapy-pill-btn">Start Conversation</Link>
+              {!isLoggedIn && <Link to="/login" className="therapy-pill-btn ghost">Login</Link>}
             </div>
           </div>
         </section>
@@ -93,20 +101,6 @@ export default function Landing() {
               src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1600&q=80"
               alt="People using a wellness app"
             />
-            <aside>
-              <div>
-                <strong>How The App Works</strong>
-                <small>Daily check-ins and guided questions</small>
-              </div>
-              <div>
-                <strong>Stress Model</strong>
-                <small>Pattern detection from your responses</small>
-              </div>
-              <div>
-                <strong>Support</strong>
-                <small>Actionable coping routines and prompts</small>
-              </div>
-            </aside>
           </div>
 
           <div className="therapy-features-title">
@@ -145,9 +139,9 @@ export default function Landing() {
               <h2>Simple Steps to Better Mental Health</h2>
               <p>An easy process you can begin today, with structured support at every stage.</p>
             </div>
-            <div className="therapy-steps-grid">
+            <div className="therapy-steps-grid therapy-steps-bento">
               {processSteps.map((step) => (
-                <article key={step.index}>
+                <article key={step.index} className={step.className}>
                   <strong>{step.index}</strong>
                   <h3>{step.title}</h3>
                   <p>{step.desc}</p>

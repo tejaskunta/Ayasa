@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import '../styles/pages.css';
 
 export default function Register() {
@@ -8,7 +8,6 @@ export default function Register() {
   });
   const [error, setError]     = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setError('');
@@ -31,7 +30,7 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/register', {
+      const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -60,6 +59,11 @@ export default function Register() {
 
   return (
     <div className="auth-container">
+      <div className="auth-top-links">
+        <Link to="/" className="auth-top-link">Back to landing</Link>
+        <Link to="/login" className="auth-top-link">Sign in</Link>
+      </div>
+
       <div className="auth-brand-panel">
         <div className="brand-content">
           <div className="brand-logo-ring">

@@ -1,23 +1,24 @@
 const axios = require('axios');
 const crypto = require('crypto');
+const CheckIn = require('../models/CheckIn');
+const User = require('../models/User');
 const ML_BASE_URL = process.env.ML_BACKEND_URL || 'http://localhost:8000';
 const CHECKIN_DEDUP_WINDOW_MS = Math.max(1000, Number(process.env.CHECKIN_DEDUP_WINDOW_MS) || 15000);
 
-// In-memory check-in history (demo — replace with MongoDB for production)
-const checkInHistory = [];
 const recentCheckIns = new Map();
+const inMemoryCheckInHistory = [];
 
 const normalizeInputForDedup = (value = '') => String(value).toLowerCase().trim().replace(/\s+/g, ' ');
 
-const keyFingerprintForDedup = (geminiApiKey = '') => {
-  const cleanKey = String(geminiApiKey || '').trim();
+const keyFingerprintForDedup = (llmApiKey = '') => {
+  const cleanKey = String(llmApiKey || '').trim();
   if (!cleanKey) return 'no-key';
   return crypto.createHash('sha256').update(cleanKey).digest('hex').slice(0, 12);
 };
 
-const buildDedupKey = (userId, userInput, geminiApiKey) => {
+const buildDedupKey = (userId, userInput, llmApiKey) => {
   const safeUserId = String(userId || 'demo_user').trim().toLowerCase();
-  const keyFingerprint = keyFingerprintForDedup(geminiApiKey);
+  const keyFingerprint = keyFingerprintForDedup(llmApiKey);
   return `${safeUserId}|${keyFingerprint}|${normalizeInputForDedup(userInput)}`;
 };
 
@@ -31,14 +32,14 @@ const pruneRecentCheckIns = () => {
 };
 
 const normalizePredictPayload = (payload = {}) => ({
-  stressLevel: payload.stressLevel,
+  stressLevel: payload.stressLevel || payload.stress,
   emotion: payload.emotion,
   confidence: payload.confidence,
-  ayasaResponse: payload.ayasaResponse,
+  ayasaResponse: payload.ayasaResponse || payload.ayasa_response,
   resources: payload.resources,
   directScoreQuery: payload.directScoreQuery,
-  geminiUsed: Boolean(payload.geminiUsed),
-  geminiError: payload.geminiError || null,
+  llmUsed: Boolean(payload.llmUsed ?? payload.groqUsed ?? payload.geminiUsed),
+  llmError: payload.llmError || payload.groqError || payload.geminiError || null,
 });
 
 const normalizeChatPayload = (payload = {}) => ({
@@ -48,14 +49,14 @@ const normalizeChatPayload = (payload = {}) => ({
   ayasaResponse: payload.ayasa_response,
   resources: [],
   directScoreQuery: false,
-  geminiUsed: false,
-  geminiError: 'Legacy /chat endpoint does not expose Gemini diagnostics.',
+  llmUsed: false,
+  llmError: 'Legacy /chat endpoint does not expose LLM diagnostics.',
 });
 
 // ── Call the Python ML backend ──────────────────────────────────────────────
-const callMLBackend = async (text, userId = 'demo_user', geminiApiKey = '') => {
+const callMLBackend = async (text, userId = 'demo_user', llmApiKey = '') => {
   const safeUserId = userId || 'demo_user';
-  const safeKey = geminiApiKey || '';
+  const safeKey = llmApiKey || '';
 
   try {
     const predictResponse = await axios.post(
@@ -63,6 +64,8 @@ const callMLBackend = async (text, userId = 'demo_user', geminiApiKey = '') => {
       {
         text,
         user_id: safeUserId,
+        llm_api_key: safeKey,
+        groq_api_key: safeKey,
         gemini_api_key: safeKey,
       },
       { timeout: 15000 }
@@ -78,6 +81,8 @@ const callMLBackend = async (text, userId = 'demo_user', geminiApiKey = '') => {
       {
         message: text,
         user_id: safeUserId,
+        llm_api_key: safeKey,
+        groq_api_key: safeKey,
         gemini_api_key: safeKey,
       },
       { timeout: 15000 }
@@ -157,24 +162,28 @@ const periodForHour = (hour) => {
   return 'night';
 };
 
-const extractTriggerTags = (text = '') => {
-  const normalized = String(text || '').toLowerCase();
-  const matches = [];
-
-  const triggerRules = [
-    { key: 'deadlines', pattern: /deadline|submission|due\s+date|exam|project/ },
-    { key: 'workload', pattern: /work|office|meeting|manager|client|task|workload/ },
-    { key: 'sleep', pattern: /sleep|insomnia|awake|restless|night/ },
-    { key: 'social', pattern: /friend|family|partner|social|team|hangout|talked/ },
-    { key: 'health', pattern: /headache|chest|pain|tension|fatigue|nausea/ },
-    { key: 'uncertainty', pattern: /uncertain|unsure|unknown|confused|overthink/ },
-  ];
-
-  triggerRules.forEach((rule) => {
-    if (rule.pattern.test(normalized)) matches.push(rule.key);
-  });
-
-  return matches;
+const fetchUserHistory = async (safeUserId) => {
+  try {
+    const docs = await CheckIn.find({ userId: safeUserId }).sort({ timestamp: 1, createdAt: 1 }).lean();
+    return docs.map((doc) => ({
+      id: String(doc._id),
+      userId: doc.userId,
+      userInput: doc.userInput,
+      stressLevel: doc.stressLevel,
+      emotion: doc.emotion || 'unknown',
+      confidence: doc.confidence,
+      ayasaResponse: doc.ayasaResponse,
+      resources: Array.isArray(doc.resources) ? doc.resources : [],
+      directScoreQuery: Boolean(doc.directScoreQuery),
+      geminiUsed: Boolean(doc.geminiUsed),
+      geminiError: doc.geminiError || null,
+      timestamp: (doc.timestamp || doc.createdAt || new Date()).toISOString(),
+    }));
+  } catch {
+    return inMemoryCheckInHistory
+      .filter((entry) => String(entry.userId || '').toLowerCase() === safeUserId)
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  }
 };
 
 const buildInsightsPayload = (entries = []) => {
@@ -346,15 +355,22 @@ const buildInsightsPayload = (entries = []) => {
 // ── POST /api/checkin/submit ────────────────────────────────────────────────
 exports.submitCheckIn = async (req, res) => {
   try {
-    const { userInput, userId, geminiApiKey } = req.body;
-    const safeUserId = String(userId || 'demo_user').trim().toLowerCase();
+    const { userInput, userId, llmApiKey, geminiApiKey } = req.body;
+    const authUserId = String(req.user?.userId || '').trim();
+    const safeUserId = String(authUserId || userId || 'demo_user').trim().toLowerCase();
+    let resolvedLlmApiKey = String(llmApiKey || geminiApiKey || '').trim();
+
+    if (!resolvedLlmApiKey && authUserId) {
+      const user = await User.findById(authUserId).select('+llm_api_key').lean();
+      resolvedLlmApiKey = String(user?.llm_api_key || '').trim();
+    }
 
     if (!userInput) {
       return res.status(400).json({ error: 'User input is required' });
     }
 
     pruneRecentCheckIns();
-    const dedupKey = buildDedupKey(safeUserId, userInput, geminiApiKey);
+    const dedupKey = buildDedupKey(safeUserId, userInput, resolvedLlmApiKey);
     const recentEntry = recentCheckIns.get(dedupKey);
     const now = Date.now();
 
@@ -369,7 +385,7 @@ exports.submitCheckIn = async (req, res) => {
     let stressLevel, emotion, ayasaResponse, confidence, resources, directScoreQuery, geminiUsed, geminiError;
 
     try {
-      const mlResult = await callMLBackend(userInput, safeUserId, geminiApiKey);
+      const mlResult = await callMLBackend(userInput, safeUserId, resolvedLlmApiKey);
       emotion = mlResult.emotion || 'unknown';
       stressLevel = normalizeStressLevelForUI(mlResult.stressLevel);
       ayasaResponse =
@@ -378,8 +394,8 @@ exports.submitCheckIn = async (req, res) => {
       confidence = normalizeConfidence(mlResult.confidence);
       resources = Array.isArray(mlResult.resources) ? mlResult.resources : getFallbackResources(stressLevel);
       directScoreQuery = Boolean(mlResult.directScoreQuery);
-      geminiUsed = Boolean(mlResult.geminiUsed);
-      geminiError = mlResult.geminiError || null;
+      geminiUsed = Boolean(mlResult.llmUsed);
+      geminiError = mlResult.llmError || null;
     } catch (mlError) {
       // ── Fallback: ML server not running ──
       console.warn('ML backend unavailable, using fallback:', mlError.message);
@@ -394,22 +410,55 @@ exports.submitCheckIn = async (req, res) => {
       geminiError = `Node fallback path: ${mlError.message}`;
     }
 
-    const checkInData = {
-      id: checkInHistory.length + 1,
-      userId: safeUserId,
-      userInput,
-      stressLevel,
-      emotion,
-      confidence,
-      ayasaResponse,
-      resources,
-      directScoreQuery,
-      geminiUsed,
-      geminiError,
-      timestamp: new Date().toISOString(),
-    };
+    let checkInData;
+    try {
+      const created = await CheckIn.create({
+        userId: safeUserId,
+        userInput,
+        stressLevel,
+        emotion,
+        confidence,
+        ayasaResponse,
+        resources,
+        directScoreQuery,
+        geminiUsed,
+        geminiError,
+        timestamp: new Date(),
+        mlPredictionData: null,
+      });
 
-    checkInHistory.push(checkInData);
+      checkInData = {
+        id: String(created._id),
+        userId: created.userId,
+        userInput: created.userInput,
+        stressLevel: created.stressLevel,
+        emotion: created.emotion || 'unknown',
+        confidence: created.confidence,
+        ayasaResponse: created.ayasaResponse,
+        resources: Array.isArray(created.resources) ? created.resources : [],
+        directScoreQuery: Boolean(created.directScoreQuery),
+        geminiUsed: Boolean(created.geminiUsed),
+        geminiError: created.geminiError || null,
+        timestamp: (created.timestamp || created.createdAt || new Date()).toISOString(),
+      };
+    } catch {
+      checkInData = {
+        id: `mem-${Date.now()}`,
+        userId: safeUserId,
+        userInput,
+        stressLevel,
+        emotion,
+        confidence,
+        ayasaResponse,
+        resources,
+        directScoreQuery,
+        geminiUsed,
+        geminiError,
+        timestamp: new Date().toISOString(),
+      };
+      inMemoryCheckInHistory.push(checkInData);
+    }
+
     recentCheckIns.set(dedupKey, {
       createdAt: Date.now(),
       result: checkInData,
@@ -427,10 +476,11 @@ exports.submitCheckIn = async (req, res) => {
 // ── GET /api/checkin/history ────────────────────────────────────────────────
 exports.getHistory = async (req, res) => {
   try {
-    const safeUserId = String(req.query.userId || '').trim().toLowerCase();
-    const filteredHistory = safeUserId
-      ? checkInHistory.filter((entry) => String(entry.userId || '').toLowerCase() === safeUserId)
-      : checkInHistory;
+    const safeUserId = String(req.user?.userId || req.query.userId || '').trim().toLowerCase();
+    if (!safeUserId) {
+      return res.status(400).json({ error: 'Authenticated user context is required' });
+    }
+    const filteredHistory = await fetchUserHistory(safeUserId);
 
     res.json({
       message: 'Check-in history retrieved',
@@ -444,10 +494,11 @@ exports.getHistory = async (req, res) => {
 // ── GET /api/checkin/insights ─────────────────────────────────────────────
 exports.getInsights = async (req, res) => {
   try {
-    const safeUserId = String(req.query.userId || '').trim().toLowerCase();
-    const userHistory = safeUserId
-      ? checkInHistory.filter((entry) => String(entry.userId || '').toLowerCase() === safeUserId)
-      : checkInHistory;
+    const safeUserId = String(req.user?.userId || req.query.userId || '').trim().toLowerCase();
+    if (!safeUserId) {
+      return res.status(400).json({ error: 'Authenticated user context is required' });
+    }
+    const userHistory = await fetchUserHistory(safeUserId);
 
     const insights = buildInsightsPayload(userHistory);
     res.json({
@@ -463,9 +514,16 @@ exports.getInsights = async (req, res) => {
 // ── GET /api/checkin/ml-health ─────────────────────────────────────────────
 exports.getMLHealth = async (req, res) => {
   const health = await getMLBackendHealth();
+  const llmActive = Boolean(
+    health.payload?.llm_active
+      ?? health.payload?.groq_active
+      ?? health.payload?.gemini_active
+      ?? false
+  );
   res.json({
     available: health.available,
-    geminiActive: health.geminiActive,
+    llmActive,
+    geminiActive: llmActive,
     stressModelLoaded: Boolean(health.payload?.stress_model_loaded),
     emotionModelLoaded: Boolean(health.payload?.emotion_model_loaded),
     timestamp: new Date().toISOString(),

@@ -7,6 +7,7 @@ export default function Orb({
   hoverIntensity = 0.2,
   rotateOnHover = true,
   forceHoverState = false,
+  paused = false,
   backgroundColor = '#000000'
 }) {
   const ctnDom = useRef(null);
@@ -257,7 +258,9 @@ export default function Orb({
 
     let rafId;
     const update = (t) => {
-      rafId = requestAnimationFrame(update);
+      if (!paused) {
+        rafId = requestAnimationFrame(update);
+      }
       const dt = (t - lastTime) * 0.001;
       lastTime = t;
       program.uniforms.iTime.value = t * 0.001;
@@ -268,7 +271,7 @@ export default function Orb({
       const effectiveHover = forceHoverState ? 1 : targetHover;
       program.uniforms.hover.value += (effectiveHover - program.uniforms.hover.value) * 0.1;
 
-      if (rotateOnHover && effectiveHover > 0.5) {
+      if (!paused && rotateOnHover && effectiveHover > 0.5) {
         currentRot += dt * rotationSpeed;
       }
       program.uniforms.rot.value = currentRot;
