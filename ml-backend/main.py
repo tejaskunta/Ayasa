@@ -20,13 +20,15 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from transformers import pipeline
+from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
 
 genai = cast(Any, import_module("google.generativeai"))
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
+MODEL_NAME = os.getenv("STRESS_MODEL_NAME", "ganeshtk/silentstress-model")
+MODEL_SUBFOLDER = os.getenv("STRESS_MODEL_SUBFOLDER", "Complete_StressModel/bert_stress_model_final_2")
 
 
 def resolve_existing_path(candidates: List[Path]) -> Path | None:
@@ -44,19 +46,8 @@ def env_int(name: str, default: int) -> int:
         return default
 
 
-STRESS_MODEL_DIR = resolve_existing_path(
-    [
-        BASE_DIR / "Complete_StressModel" / "bert_stress_model_final_2",
-        BASE_DIR / "complete_stressmodel" / "bert_stress_model_final_2",
-        BASE_DIR / "stress_model",
-        BASE_DIR / "stress_analysis" / "bert_stress_model",
-    ]
-)
-
 FEATURE_SCALER_PATH = resolve_existing_path(
     [
-        BASE_DIR / "Complete_StressModel" / "feature_scaler_final_2.pkl",
-        BASE_DIR / "complete_stressmodel" / "feature_scaler_final_2.pkl",
         BASE_DIR / "feature_scaler.pkl",
         BASE_DIR / "stress_analysis" / "feature_scaler.pkl",
     ]
@@ -64,8 +55,6 @@ FEATURE_SCALER_PATH = resolve_existing_path(
 
 META_MODEL_PATH = resolve_existing_path(
     [
-        BASE_DIR / "Complete_StressModel" / "meta_model_final_2.pkl",
-        BASE_DIR / "complete_stressmodel" / "meta_model_final_2.pkl",
         BASE_DIR / "meta_model.pkl",
         BASE_DIR / "meta_model(3).pkl",
         BASE_DIR / "stress_analysis" / "meta_model.pkl",
@@ -454,19 +443,25 @@ emotion_classifier = pipeline(
 )
 
 stress_classifier = None
-if STRESS_MODEL_DIR:
-    try:
-        print(f"Loading stress classifier from: {STRESS_MODEL_DIR}")
-        stress_classifier = pipeline(
-            "text-classification",
-            model=str(STRESS_MODEL_DIR),
-            tokenizer=str(STRESS_MODEL_DIR),
-            top_k=None,
-        )
-    except Exception as exc:
-        print(f"Stress model failed to load: {exc}")
-else:
-    print("Stress model directory not found. Falling back to heuristic stress inference.")
+try:
+    print(f"Loading stress classifier from Hugging Face: {MODEL_NAME} ({MODEL_SUBFOLDER})")
+    stress_model = AutoModelForSequenceClassification.from_pretrained(
+        MODEL_NAME,
+        subfolder=MODEL_SUBFOLDER,
+    )
+    stress_tokenizer = AutoTokenizer.from_pretrained(
+        MODEL_NAME,
+        subfolder=MODEL_SUBFOLDER,
+    )
+    stress_classifier = pipeline(
+        "text-classification",
+        model=stress_model,
+        tokenizer=stress_tokenizer,
+        top_k=None,
+    )
+except Exception as exc:
+    print(f"Stress model failed to load from Hugging Face ({MODEL_NAME}): {exc}")
+    print("Falling back to heuristic stress inference.")
 
 feature_scaler = None
 if FEATURE_SCALER_PATH:

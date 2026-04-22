@@ -323,16 +323,18 @@ body {
   --therapy-dark: #1f2e40;
   background: var(--therapy-bg);
   min-height: 100vh;
-  padding: 1rem;
+  padding: 0;
+  box-sizing: border-box;
   color: var(--therapy-ink);
-  font-family: 'Span Regular Condensed', 'Saira Condensed', 'Manrope', 'DM Sans', sans-serif;
+  font-family: 'Manrope', 'DM Sans', sans-serif;
+  overflow-x: hidden;
 }
 
 .therapy-shell {
-  width: min(1280px, 100%);
+  width: 100%;
   margin: 0 auto;
   background: var(--therapy-paper);
-  border: 1px solid rgba(75, 100, 130, 0.2);
+  border: none;
 }
 
 .therapy-hero {
@@ -374,7 +376,7 @@ body {
   gap: 0.35rem;
   text-decoration: none;
   color: #eef5ff;
-  font-family: 'Span Regular Condensed', 'Saira Condensed', 'Manrope', sans-serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif', serif;
   font-size: 1.28rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -426,7 +428,7 @@ body {
 }
 
 .therapy-hero-content h1 {
-  font-family: 'Span Regular Condensed', 'Saira Condensed', 'Manrope', sans-serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif', serif;
   font-size: clamp(2.1rem, 5.3vw, 4.35rem);
   line-height: 0.95;
   margin: 0 0 1.1rem;
@@ -537,7 +539,7 @@ body {
 
 .therapy-heading-row h2 {
   margin: 0;
-  font-family: 'Span Regular Condensed', 'Saira Condensed', 'Manrope', sans-serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif', serif;
   font-size: clamp(1.75rem, 3vw, 3rem);
   line-height: 0.96;
   letter-spacing: -0.01em;
@@ -584,7 +586,7 @@ body {
 
 .therapy-about-grid aside strong {
   display: block;
-  font-family: 'Span Regular Condensed', 'Saira Condensed', sans-serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif', serif;
   font-size: 2rem;
   line-height: 1;
   margin-bottom: 0.2rem;
@@ -616,7 +618,7 @@ body {
 .therapy-mini-cards h3 {
   margin: 0.35rem 0 0.28rem;
   font-size: 0.8rem;
-  font-family: 'Span Regular Condensed', 'Saira Condensed', sans-serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif', serif;
   font-weight: 600;
 }
 
@@ -739,7 +741,7 @@ body {
 
 .therapy-steps-grid h3 {
   margin: 0 0 0.35rem;
-  font-family: 'Span Regular Condensed', 'Saira Condensed', sans-serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif', serif;
   color: #edf5ff;
   font-size: 1.16rem;
   line-height: 1;
@@ -822,7 +824,7 @@ body {
 .therapy-faq-list summary {
   list-style: none;
   cursor: pointer;
-  font-family: 'Span Regular Condensed', 'Saira Condensed', sans-serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif', serif;
   font-size: 1.02rem;
   color: #29374a;
   font-weight: 600;
@@ -856,7 +858,7 @@ body {
 
 .therapy-cta h2 {
   margin: 0 0 0.6rem;
-  font-family: 'Span Regular Condensed', 'Saira Condensed', sans-serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif', serif;
   font-size: clamp(2rem, 4vw, 3.7rem);
   line-height: 0.92;
 }
@@ -891,7 +893,7 @@ body {
 
 .therapy-footer-top h3 {
   margin: 0;
-  font-family: 'Span Regular Condensed', 'Saira Condensed', sans-serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif', serif;
   font-size: clamp(1.5rem, 2.8vw, 2.35rem);
   line-height: 0.95;
 }
@@ -991,7 +993,7 @@ body {
 
 @media (max-width: 760px) {
   .therapy-landing {
-    padding: 0.35rem;
+    padding: 0;
   }
 
   .therapy-nav nav {
@@ -1068,6 +1070,22 @@ body {
 
 .brand-content {
   position: relative; z-index: 1;
+}
+.auth-brand-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  font-family: 'Cormorant Garamond', 'Noto Serif', serif;
+  font-size: 2.2rem;
+  font-weight: 600;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 1rem;
+}
+.auth-brand-logo .material-symbols-rounded {
+  font-size: 1.45rem;
+  color: var(--primary);
 }
 .brand-content h1 {
   font-family: 'Playfair Display', 'Noto Serif', serif;
@@ -1203,8 +1221,8 @@ body {
 }
 .form-group input {
   width: 100%;
-  background: rgba(15,19,31,0.85);
-  border: 1px solid rgba(74,163,255,0.12);
+  background: rgba(255,255,255,0.94);
+  border: 1px solid rgba(74,163,255,0.24);
   border-radius: 12px;
   padding: 0.875rem 1.2rem;
   color: var(--text);
@@ -1216,11 +1234,11 @@ body {
 .form-group input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 18px rgba(47,127,230,0.18);
-  background: rgba(15,19,31,0.97);
+  background: #ffffff;
 }
 .form-group input::placeholder {
-  color: var(--text-muted);
-  opacity: 0.5;
+  color: #8ea0ba;
+  opacity: 1;
 }
 
 .form-row {
@@ -2376,7 +2394,7 @@ body {
   background: rgba(255, 255, 255, 0.82);
   border: 1px solid rgba(74, 163, 255, 0.16);
   border-radius: 18px;
-  padding: 1rem;
+  padding: 1rem; box-sizing: border-box;
   box-shadow: 0 12px 28px rgba(35,79,148,0.08);
 }
 

@@ -46,10 +46,10 @@ export default function Login() {
     <div className="auth-container">
       <div className="auth-brand-panel">
         <div className="brand-content">
-          <div className="brand-logo-ring">
-            <span className="material-symbols-rounded" style={{ color: '#4aa3ff', fontSize: 40 }}>spa</span>
+          <div className="auth-brand-logo">
+            <span className="material-symbols-rounded">diversity_1</span>
+            AYASA
           </div>
-          <h1>AYASA</h1>
           <p>Welcome back. We've been listening.</p>
           <div className="brand-features">
             <div className="brand-feature">
