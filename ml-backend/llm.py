@@ -5,7 +5,7 @@ from typing import Dict, Optional, Tuple
 
 from groq import Groq
 
-DEFAULT_GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-8b-8192").strip() or "llama3-8b-8192"
+DEFAULT_GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant").strip() or "llama-3.1-8b-instant"
 
 
 def _build_structured_prompt(user_input: str, stress: str, emotions: Dict[str, float], strategy: str) -> str:

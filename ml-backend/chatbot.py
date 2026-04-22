@@ -88,10 +88,6 @@ def chatbot_reply(user_input: str, stress_output: Dict[str, object], llm_api_key
             "crisis": True,
         }
 
-    lowered = str(user_input or "").lower()
-    if "fine" in lowered and "tired" in lowered:
-        user_input = "You say you're fine, but it sounds like you might be a bit drained. Has something been building up lately?"
-
     generated, llm_error = generate_response(
         user_input,
         stress,

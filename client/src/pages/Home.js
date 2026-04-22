@@ -188,27 +188,45 @@ function pickRandom(items = []) {
   return items[Math.floor(Math.random() * items.length)];
 }
 
+// One best exercise per emotion — deterministic, not random.
+// anger    → box breathing (slows physiological arousal)
+// fear     → grounding    (5-4-3-2-1 breaks anxiety loops, anchors to present)
+// sadness  → gratitude    (small wins counter negativity bias)
+// joy/love → breathing    (sustain and deepen the positive state)
+// surprise → grounding    (anchor against disorientation)
+const EMOTION_EXERCISE = {
+  anger:    'boxBreathing',
+  fear:     'grounding',
+  sadness:  'gratitude',
+  joy:      'breathing',
+  love:     'gratitude',
+  surprise: 'grounding',
+};
+
+const STRESS_EXERCISE = {
+  High:     'boxBreathing',
+  Moderate: 'thoughtDump',
+  Low:      'breathing',
+};
+
+const EXERCISE_NAMES = {
+  grounding:    '5-4-3-2-1 Grounding',
+  gratitude:    '3 Small Wins',
+  breathing:    'Breathing Circle',
+  thoughtDump:  'Thought Dump',
+  reframe:      'Thought Reframe',
+  controlSplit: 'Control Split',
+  boxBreathing: 'Box Breathing',
+  safeLoop:     'Safe Statement Loop',
+  oneStep:      'Just One Step',
+};
+
 function pickExerciseForEmotion(emotion, stressLevel) {
-  const safeEmotion = String(emotion || '').toLowerCase();
-  const safeStress = normalizeStressLevel(stressLevel);
-
-  const lowPool = ['grounding', 'gratitude', 'breathing'];
-  const moderatePool = ['thoughtDump', 'reframe', 'controlSplit'];
-  const highPool = ['boxBreathing', 'safeLoop', 'oneStep'];
-
-  if (safeEmotion.includes('anger') || safeEmotion.includes('fear')) {
-    return pickRandom(highPool);
+  const e = String(emotion || '').toLowerCase();
+  for (const [key, exercise] of Object.entries(EMOTION_EXERCISE)) {
+    if (e.includes(key)) return exercise;
   }
-  if (safeEmotion.includes('sad')) {
-    return pickRandom(moderatePool);
-  }
-  if (safeEmotion.includes('joy') || safeEmotion.includes('love')) {
-    return pickRandom(lowPool);
-  }
-
-  if (safeStress === 'High') return pickRandom(highPool);
-  if (safeStress === 'Low') return pickRandom(lowPool);
-  return pickRandom(moderatePool);
+  return STRESS_EXERCISE[normalizeStressLevel(stressLevel)] || 'thoughtDump';
 }
 
 function GroundingExercise() {
@@ -413,6 +431,74 @@ export default function Home() {
   const exerciseOfferShownRef = useRef(false);
   const endRef = useRef(null);
   const lastWarningRef = useRef('');
+  const sessionIdRef = useRef(localStorage.getItem('ayasa_session_id') || null);
+
+  const ensureSession = async () => {
+    if (sessionIdRef.current) return sessionIdRef.current;
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      const id = data?.session?._id || null;
+      if (id) {
+        sessionIdRef.current = id;
+        localStorage.setItem('ayasa_session_id', id);
+      }
+      return id;
+    } catch {
+      return null;
+    }
+  };
+
+  const saveToMongo = async (sessionId, userText, botText, emotionLabel, stressLabel) => {
+    if (!sessionId) return;
+    try {
+      await fetch('/api/messages/save', {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ session_id: sessionId, user_text: userText, bot_text: botText, emotion_label: emotionLabel, stress_label: stressLabel }),
+      });
+    } catch { /* silent — localStorage is the fallback */ }
+  };
+
+  const loadMessagesFromMongo = async (sessionId) => {
+    if (!sessionId) return null;
+    try {
+      const res = await fetch(`/api/messages/${sessionId}`, { headers: authHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !Array.isArray(data?.messages) || !data.messages.length) return null;
+      return data.messages.map((m) => ({
+        id: String(m._id),
+        role: m.sender === 'bot' ? 'assistant' : 'user',
+        type: m.sender === 'bot' ? 'analysis' : 'text',
+        text: m.text,
+        meta: m.sender === 'bot' ? { emotion: m.emotion_label } : undefined,
+        time: m.createdAt || new Date().toISOString(),
+      }));
+    } catch {
+      return null;
+    }
+  };
+
+  const handleResetChat = () => {
+    const initMsg = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      type: 'intro',
+      text: 'Chat cleared. I am ready whenever you are. Tell me how you feel, what is triggering stress, or ask for your latest trends.',
+      time: new Date().toISOString(),
+    };
+    setMessages([initMsg]);
+    localStorage.setItem(getMessageStoreKey(), JSON.stringify([initMsg]));
+    // Start a fresh MongoDB session next time
+    sessionIdRef.current = null;
+    localStorage.removeItem('ayasa_session_id');
+    setPendingExercise(null);
+    exerciseOfferShownRef.current = false;
+    lastWarningRef.current = '';
+  };
 
   const loadStoredMessages = () => {
     try {
@@ -522,10 +608,17 @@ export default function Home() {
       return undefined;
     }
 
-    const storedMessages = loadStoredMessages();
-    if (storedMessages) {
-      setMessages(storedMessages);
-    }
+    // Try MongoDB first, fall back to localStorage
+    (async () => {
+      const mongoMessages = await loadMessagesFromMongo(sessionIdRef.current);
+      if (mongoMessages && mongoMessages.length > 1) {
+        setMessages(mongoMessages);
+        localStorage.setItem(getMessageStoreKey(), JSON.stringify(mongoMessages));
+      } else {
+        const storedMessages = loadStoredMessages();
+        if (storedMessages) setMessages(storedMessages);
+      }
+    })();
 
     loadHistory();
     loadRuntime();
@@ -611,25 +704,38 @@ export default function Home() {
     pushMessage({ role: 'user', type: 'text', text });
     setInput('');
 
-    if (/\b(no|not now|later|skip)\b/i.test(text)) {
+    // Short pure decline while an exercise is pending → acknowledge and keep conversation alive
+    const isPureDecline = pendingExercise &&
+      /^\s*(no|nope|not now|later|skip|maybe later|not yet|no thanks|not right now)\s*[.!?]?\s*$/i.test(text);
+    if (isPureDecline) {
       setPendingExercise(null);
+      pushMessage({
+        role: 'assistant',
+        type: 'text',
+        text: "That's okay! Keep sharing how you feel, or just say 'exercise' whenever you're ready to try one.",
+      });
       return;
     }
 
-    const isExerciseCommand = /\b(start|begin|yes|ok|okay|sure)\b[\w\s]*\bexercise\b/i.test(text) || /^exercise$/i.test(text);
-    if (isExerciseCommand) {
-      const exerciseStress = normalizeStressLevel(
-        pendingExercise?.stressLevel || selectedEntry?.stressLevel || historyEntries[0]?.stressLevel || 'Moderate'
-      );
-      const exerciseKey = pendingExercise?.exerciseKey || pickExerciseForEmotion(selectedEntry?.emotion, exerciseStress);
+    // Longer message containing "no" or any other message → clear pending exercise and fall through to ML
+    if (pendingExercise) setPendingExercise(null);
+
+    // Positive exercise request — covers "exercise", "exercises", "do an exercise", etc.
+    const wantsExercise = /\bexercises?\b/i.test(text) &&
+      !/\b(no|don'?t|not|never|stop)\b.{0,20}\bexercises?\b/i.test(text);
+    if (wantsExercise) {
+      const latestEntry = historyEntries[0] || selectedEntry;
+      const exerciseKey = pickExerciseForEmotion(latestEntry?.emotion, latestEntry?.stressLevel);
+      const exerciseName = EXERCISE_NAMES[exerciseKey] || 'mindfulness exercise';
+      const exerciseStress = normalizeStressLevel(latestEntry?.stressLevel || 'Moderate');
+      const emotionHint = latestEntry?.emotion ? ` — chosen for your ${latestEntry.emotion} signal` : '';
       pushMessage({
         role: 'assistant',
         type: 'exercise',
-        text: `Starting a ${exerciseStress.toLowerCase()} exercise for you now.`,
+        text: `Starting ${exerciseName} for you${emotionHint}.`,
         exerciseStress,
         exerciseKey,
       });
-      setPendingExercise(null);
       exerciseOfferShownRef.current = true;
       return;
     }
@@ -653,13 +759,17 @@ export default function Home() {
       setHistoryEntries(updatedHistory);
       setSelectedEntryId(String(result.id));
 
+      const botText = result.ayasaResponse || 'Analysis completed.';
       pushMessage({
         role: 'assistant',
         type: 'analysis',
-        text: result.ayasaResponse || 'Analysis completed.',
-        meta: {
-          emotion: result.emotion,
-        },
+        text: botText,
+        meta: { emotion: result.emotion },
+      });
+
+      // Persist conversation to MongoDB (fire and forget)
+      ensureSession().then((sessionId) => {
+        saveToMongo(sessionId, text, botText, result.emotion, result.stressLevel);
       });
 
       const shouldOfferExercise = !exerciseOfferShownRef.current && result.emotion
@@ -670,12 +780,13 @@ export default function Home() {
 
       if (shouldOfferExercise) {
         const exerciseKey = pickExerciseForEmotion(result.emotion, result.stressLevel);
+        const exerciseName = EXERCISE_NAMES[exerciseKey] || 'mindfulness exercise';
         setPendingExercise({ exerciseKey, stressLevel: result.stressLevel, emotion: result.emotion });
         exerciseOfferShownRef.current = true;
         pushMessage({
           role: 'assistant',
           type: 'exercise-offer',
-          text: 'Would you like to start a quick exercise now?',
+          text: `I have a "${exerciseName}" exercise ready for you — it may help with what you're feeling. Would you like to try it? (say "exercise" to start, or keep sharing)`,
         });
       }
 
@@ -908,18 +1019,30 @@ export default function Home() {
       <main className="mainchat-main">
         <header className="mainchat-header">
           <div className="mainchat-top-left" />
-          <button
-            type="button"
-            className="mainchat-user-avatar"
-            onClick={() => {
-              setIsProfileOpen(true);
-              setSidebarCollapsed(false);
-            }}
-            aria-label="Open user profile"
-            title="Open user profile"
-          >
-            {displayName.charAt(0).toUpperCase()}
-          </button>
+          <div className="mainchat-header-actions">
+            <button
+              type="button"
+              className="mainchat-reset-btn"
+              onClick={handleResetChat}
+              aria-label="Reset chat"
+              title="Clear conversation and start fresh"
+            >
+              <span className="material-symbols-rounded">refresh</span>
+              <span className="mainchat-reset-label">Reset chat</span>
+            </button>
+            <button
+              type="button"
+              className="mainchat-user-avatar"
+              onClick={() => {
+                setIsProfileOpen(true);
+                setSidebarCollapsed(false);
+              }}
+              aria-label="Open user profile"
+              title="Open user profile"
+            >
+              {displayName.charAt(0).toUpperCase()}
+            </button>
+          </div>
         </header>
 
         <section className={`mainchat-hero ${hasChatStarted ? 'dismissed' : ''}`}>
@@ -966,9 +1089,9 @@ export default function Home() {
 
         <div className="mainchat-orb-dock" aria-hidden="true">
           <Orb
-            hoverIntensity={0}
-            rotateOnHover={false}
-            paused
+            hoverIntensity={0.3}
+            rotateOnHover={true}
+            paused={false}
             hue={136}
             forceHoverState={false}
             backgroundColor="#ecf3ff"
