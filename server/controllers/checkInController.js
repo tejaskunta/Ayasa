@@ -121,17 +121,240 @@ const normalizeConfidence = (value) => {
   return Math.round(num);
 };
 
+const STRESS_TO_SCORE = {
+  Low: 1,
+  Moderate: 2,
+  High: 3,
+};
+
+const SCORE_TO_STRESS = {
+  1: 'Low',
+  2: 'Moderate',
+  3: 'High',
+};
+
+const safeDate = (value) => {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
+const average = (values) => {
+  if (!Array.isArray(values) || values.length === 0) return 0;
+  return values.reduce((sum, value) => sum + Number(value || 0), 0) / values.length;
+};
+
+const toStressScore = (level) => STRESS_TO_SCORE[level] || 2;
+
+const scoreToStressLabel = (score) => {
+  const rounded = Math.max(1, Math.min(3, Math.round(score || 2)));
+  return SCORE_TO_STRESS[rounded] || 'Moderate';
+};
+
+const periodForHour = (hour) => {
+  if (hour >= 5 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 17) return 'afternoon';
+  if (hour >= 17 && hour < 22) return 'evening';
+  return 'night';
+};
+
+const extractTriggerTags = (text = '') => {
+  const normalized = String(text || '').toLowerCase();
+  const matches = [];
+
+  const triggerRules = [
+    { key: 'deadlines', pattern: /deadline|submission|due\s+date|exam|project/ },
+    { key: 'workload', pattern: /work|office|meeting|manager|client|task|workload/ },
+    { key: 'sleep', pattern: /sleep|insomnia|awake|restless|night/ },
+    { key: 'social', pattern: /friend|family|partner|social|team|hangout|talked/ },
+    { key: 'health', pattern: /headache|chest|pain|tension|fatigue|nausea/ },
+    { key: 'uncertainty', pattern: /uncertain|unsure|unknown|confused|overthink/ },
+  ];
+
+  triggerRules.forEach((rule) => {
+    if (rule.pattern.test(normalized)) matches.push(rule.key);
+  });
+
+  return matches;
+};
+
+const buildInsightsPayload = (entries = []) => {
+  const cleaned = entries
+    .map((entry) => {
+      const parsedDate = safeDate(entry.timestamp);
+      return parsedDate ? { ...entry, _parsedDate: parsedDate } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a._parsedDate - b._parsedDate);
+
+  if (!cleaned.length) {
+    return {
+      personalTrend: {
+        week: 'No check-ins yet. Start a conversation to build your 7-day trend.',
+        month: '30-day trend will appear after a few check-ins.',
+        movingAverage: 'Moving average unavailable until more entries are collected.',
+      },
+      patternDetection: 'Patterns will appear after multiple check-ins across different times.',
+      contextualFeedback: 'Share how you feel now and AYASA will provide personalized support.',
+      weeklySummary: 'Weekly summary is unavailable because there are no entries yet.',
+      earlyWarning: '',
+      metrics: {
+        avg7: 0,
+        avg30: 0,
+        movingAverage: 0,
+        weeklyChangePct: 0,
+      },
+    };
+  }
+
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const withinDays = (days) => cleaned.filter((entry) => now - entry._parsedDate.getTime() <= days * dayMs);
+  const last7 = withinDays(7);
+  const last30 = withinDays(30);
+  const prev7 = cleaned.filter((entry) => {
+    const age = now - entry._parsedDate.getTime();
+    return age > 7 * dayMs && age <= 14 * dayMs;
+  });
+
+  const avg7 = average(last7.map((entry) => toStressScore(entry.stressLevel)));
+  const avg30 = average(last30.map((entry) => toStressScore(entry.stressLevel)));
+  const prev7Avg = average(prev7.map((entry) => toStressScore(entry.stressLevel)));
+  const movingEntries = cleaned.slice(-5);
+  const movingAverage = average(movingEntries.map((entry) => toStressScore(entry.stressLevel)));
+
+  const weeklyChangePct = prev7Avg > 0 ? ((avg7 - prev7Avg) / prev7Avg) * 100 : 0;
+  const weeklyDirection = weeklyChangePct >= 0 ? 'increased' : 'decreased';
+  const weeklyMagnitude = Math.abs(Math.round(weeklyChangePct));
+
+  const latest = cleaned[cleaned.length - 1];
+  const latestStress = latest?.stressLevel || 'Moderate';
+  const latestEmotion = String(latest?.emotion || 'unknown').toLowerCase();
+  const latestInput = String(latest?.userInput || '').toLowerCase();
+
+  const byPeriod = {
+    morning: [],
+    afternoon: [],
+    evening: [],
+    night: [],
+  };
+
+  let angerBeforeDeadline = 0;
+  let lowAfterSocial = 0;
+
+  cleaned.forEach((entry) => {
+    const period = periodForHour(entry._parsedDate.getHours());
+    byPeriod[period].push(toStressScore(entry.stressLevel));
+    const input = String(entry.userInput || '').toLowerCase();
+    const emotion = String(entry.emotion || '').toLowerCase();
+    if ((/deadline|exam|submission|project/.test(input)) && (emotion.includes('anger') || emotion.includes('fear'))) {
+      angerBeforeDeadline += 1;
+    }
+    if ((/friend|family|social|team|hangout|talked/.test(input)) && entry.stressLevel === 'Low') {
+      lowAfterSocial += 1;
+    }
+  });
+
+  const topPeriod = Object.entries(byPeriod)
+    .map(([name, values]) => ({ name, avg: average(values), count: values.length }))
+    .filter((item) => item.count > 0)
+    .sort((a, b) => b.avg - a.avg)[0];
+
+  const patternParts = [];
+  if (topPeriod && topPeriod.avg >= 2.2) {
+    patternParts.push(`Higher stress appears most during the ${topPeriod.name}.`);
+  }
+  if (angerBeforeDeadline > 0) {
+    patternParts.push('Anger or fear spikes often appear around deadline-related messages.');
+  }
+  if (lowAfterSocial > 0) {
+    patternParts.push('Lower stress often follows social interactions.');
+  }
+  const patternDetection = patternParts.length
+    ? patternParts.join(' ')
+    : 'No dominant pattern yet. Keep checking in to reveal stronger trends.';
+
+  const uncertaintySignal = /uncertain|unsure|overwhelm|overwhelmed|confused/.test(latestInput);
+  let contextualFeedback = 'Keep sharing your context and AYASA will tailor support to your current state.';
+  if (latestStress === 'High' && latestEmotion.includes('anger')) {
+    contextualFeedback = 'Your stress is high with anger signals. Try a 90-second cooldown and step away before responding to triggers.';
+  } else if (latestStress === 'Moderate' && uncertaintySignal) {
+    contextualFeedback = 'You are in a moderate but uncertain state. Break the next task into one small clear step to regain control.';
+  } else if (latestStress === 'High' && (latestEmotion.includes('fear') || latestEmotion.includes('sadness'))) {
+    contextualFeedback = 'Your stress is high with negative emotional load. Reach out to support and reduce pressure to one manageable priority.';
+  } else if (latestStress === 'Low') {
+    contextualFeedback = 'Your current pattern is stable. Protect this by keeping your routine and taking short mindful pauses.';
+  }
+
+  const weekStartScore = toStressScore(last7[0]?.stressLevel || latestStress);
+  const weekEndScore = toStressScore(last7[last7.length - 1]?.stressLevel || latestStress);
+  const shiftText = weekEndScore > weekStartScore
+    ? 'trending upward'
+    : weekEndScore < weekStartScore
+      ? 'trending downward'
+      : 'remaining stable';
+
+  const dominantEmotion = Object.entries(
+    last7.reduce((acc, entry) => {
+      const key = String(entry.emotion || 'unknown').toLowerCase();
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {})
+  ).sort((a, b) => b[1] - a[1])[0];
+
+  const weeklySummary = [
+    `This week: stress is mostly ${scoreToStressLabel(avg7).toLowerCase()} and ${shiftText}.`,
+    `Dominant emotion: ${(dominantEmotion?.[0] || 'unknown')}.`,
+    topPeriod ? `Highest stress window: ${topPeriod.name}.` : 'Highest stress window: not enough data yet.',
+  ].join(' ');
+
+  const lastThree = cleaned.slice(-3).map((entry) => toStressScore(entry.stressLevel));
+  const isRising = lastThree.length === 3 && lastThree[2] > lastThree[1] && lastThree[1] > lastThree[0];
+  const hasRepeatedHigh = cleaned.slice(-4).filter((entry) => entry.stressLevel === 'High').length >= 3;
+  const earlyWarning = (isRising || hasRepeatedHigh)
+    ? 'Early warning: your stress has increased sharply in recent entries. Consider an immediate reset and support step.'
+    : '';
+
+  const personalTrendWeek = prev7Avg > 0
+    ? `Your stress has ${weeklyDirection} ${weeklyMagnitude}% over the last 7 days and is now mostly ${scoreToStressLabel(avg7)}.`
+    : `Your recent 7-day trend is mostly ${scoreToStressLabel(avg7)}.`;
+
+  const first30 = last30.slice(0, Math.max(1, Math.floor(last30.length / 2)));
+  const second30 = last30.slice(Math.max(1, Math.floor(last30.length / 2)));
+  const monthStartAvg = average(first30.map((entry) => toStressScore(entry.stressLevel)));
+  const monthEndAvg = average(second30.map((entry) => toStressScore(entry.stressLevel)));
+  const monthShift = monthEndAvg >= monthStartAvg ? 'upward' : 'downward';
+
+  return {
+    personalTrend: {
+      week: personalTrendWeek,
+      month: `Last 30 days show a ${monthShift} shift from ${scoreToStressLabel(monthStartAvg)} toward ${scoreToStressLabel(monthEndAvg)}.`,
+      movingAverage: `Current moving average across your latest entries is ${scoreToStressLabel(movingAverage)} (${movingAverage.toFixed(2)}).`,
+    },
+    patternDetection,
+    contextualFeedback,
+    weeklySummary,
+    earlyWarning,
+    metrics: {
+      avg7: Number(avg7.toFixed(3)),
+      avg30: Number(avg30.toFixed(3)),
+      movingAverage: Number(movingAverage.toFixed(3)),
+      weeklyChangePct: Number(weeklyChangePct.toFixed(2)),
+    },
+  };
+};
+
 // ── POST /api/checkin/submit ────────────────────────────────────────────────
 exports.submitCheckIn = async (req, res) => {
   try {
     const { userInput, userId, geminiApiKey } = req.body;
+    const safeUserId = String(userId || 'demo_user').trim().toLowerCase();
 
     if (!userInput) {
       return res.status(400).json({ error: 'User input is required' });
     }
 
     pruneRecentCheckIns();
-    const dedupKey = buildDedupKey(userId, userInput, geminiApiKey);
+    const dedupKey = buildDedupKey(safeUserId, userInput, geminiApiKey);
     const recentEntry = recentCheckIns.get(dedupKey);
     const now = Date.now();
 
@@ -146,7 +369,7 @@ exports.submitCheckIn = async (req, res) => {
     let stressLevel, emotion, ayasaResponse, confidence, resources, directScoreQuery, geminiUsed, geminiError;
 
     try {
-      const mlResult = await callMLBackend(userInput, userId, geminiApiKey);
+      const mlResult = await callMLBackend(userInput, safeUserId, geminiApiKey);
       emotion = mlResult.emotion || 'unknown';
       stressLevel = normalizeStressLevelForUI(mlResult.stressLevel);
       ayasaResponse =
@@ -173,6 +396,7 @@ exports.submitCheckIn = async (req, res) => {
 
     const checkInData = {
       id: checkInHistory.length + 1,
+      userId: safeUserId,
       userInput,
       stressLevel,
       emotion,
@@ -203,9 +427,33 @@ exports.submitCheckIn = async (req, res) => {
 // ── GET /api/checkin/history ────────────────────────────────────────────────
 exports.getHistory = async (req, res) => {
   try {
+    const safeUserId = String(req.query.userId || '').trim().toLowerCase();
+    const filteredHistory = safeUserId
+      ? checkInHistory.filter((entry) => String(entry.userId || '').toLowerCase() === safeUserId)
+      : checkInHistory;
+
     res.json({
       message: 'Check-in history retrieved',
-      history: checkInHistory,
+      history: filteredHistory,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ── GET /api/checkin/insights ─────────────────────────────────────────────
+exports.getInsights = async (req, res) => {
+  try {
+    const safeUserId = String(req.query.userId || '').trim().toLowerCase();
+    const userHistory = safeUserId
+      ? checkInHistory.filter((entry) => String(entry.userId || '').toLowerCase() === safeUserId)
+      : checkInHistory;
+
+    const insights = buildInsightsPayload(userHistory);
+    res.json({
+      message: 'Insights generated successfully',
+      insights,
+      count: userHistory.length,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

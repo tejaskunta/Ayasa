@@ -4,9 +4,6 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
-import CheckIn from './pages/CheckIn';
-import Results from './pages/Results';
-import History from './pages/History';
 
 function App() {
   const isLoggedIn = !!(localStorage.getItem('token') && localStorage.getItem('user'));
@@ -23,15 +20,15 @@ function App() {
         />
         <Route
           path="/checkin"
-          element={isLoggedIn ? <CheckIn /> : <Navigate to="/login" />}
+          element={isLoggedIn ? <Navigate to="/home" replace /> : <Navigate to="/login" />}
         />
         <Route
           path="/results"
-          element={isLoggedIn ? <Results /> : <Navigate to="/login" />}
+          element={isLoggedIn ? <Navigate to="/home" replace /> : <Navigate to="/login" />}
         />
         <Route
           path="/history"
-          element={isLoggedIn ? <History /> : <Navigate to="/login" />}
+          element={isLoggedIn ? <Navigate to="/home" replace /> : <Navigate to="/login" />}
         />
       </Routes>
     </Router>
