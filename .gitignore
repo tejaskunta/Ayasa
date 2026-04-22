@@ -22,3 +22,5 @@ ml-backend/venv/
 ml-backend/__pycache__/
 ml-backend/stress_analysis/
 ml-backend/stress_model/
+ml-backend/Complete_StressModel/
+*.safetensors

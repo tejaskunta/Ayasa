@@ -18,8 +18,7 @@ export default function CheckIn() {
   const [resultsLinkShown, setResultsLinkShown] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
   const [aiRuntime, setAiRuntime] = useState({ loading: true, available: false, geminiActive: false });
-  const [aiRuntimeRefreshing, setAiRuntimeRefreshing] = useState(false);
-  const [geminiNoticeShown, setGeminiNoticeShown] = useState(false);
+  const [aiDelivery, setAiDelivery] = useState({ mode: 'unknown', detail: 'Waiting for first reply.' });
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -98,15 +97,6 @@ export default function CheckIn() {
     } catch {
       return { loading: false, available: false, geminiActive: false };
     }
-  };
-
-  const recheckAiRuntime = async () => {
-    if (aiRuntimeRefreshing) return;
-    setAiRuntimeRefreshing(true);
-    setAiRuntime(prev => ({ ...prev, loading: true }));
-    const next = await loadAiRuntimeStatus();
-    setAiRuntime(next);
-    setAiRuntimeRefreshing(false);
   };
 
   useEffect(() => {
@@ -212,35 +202,37 @@ export default function CheckIn() {
     });
   };
 
-  const maybeShowGeminiNotice = (result) => {
-    if (result?.geminiUsed || geminiNoticeShown) return;
-
+  const updateAiDeliveryIndicator = (result) => {
     const hasStoredGeminiKey = Boolean(localStorage.getItem('geminiApiKey')?.trim());
     const summarizeGeminiError = (rawError) => {
       const text = String(rawError || '').toLowerCase();
-      if (!text) return 'Unknown Gemini error.';
+      if (!text) return 'Fallback response used.';
       if (text.includes('api_key_invalid') || text.includes('api key not valid')) {
-        return 'Your Gemini API key is invalid.';
+        return 'Fallback active: invalid Gemini key.';
       }
       if (text.includes('quota exceeded') || text.includes('429')) {
-        return 'Your Gemini quota is exceeded or not enabled for this project.';
+        return 'Fallback active: quota/rate limit reached.';
       }
       if (text.includes('not found') || text.includes('not supported')) {
-        return 'Your current Gemini model access is not available for this key/project.';
+        return 'Fallback active: model access unavailable.';
       }
-      return 'Gemini request failed.';
+      if (text.includes('temporarily paused')) {
+        return 'Fallback active: Gemini cooldown in effect.';
+      }
+      return 'Fallback active while Gemini is unavailable.';
     };
 
-    let note = 'Gemini is unavailable right now, so I am using fallback support responses.';
-    if (!hasStoredGeminiKey) {
-      note = 'Gemini key is missing. Add your Gemini API key on Home to unlock richer AI replies.';
-    } else if (result?.geminiError) {
-      const reason = summarizeGeminiError(result.geminiError);
-      note = `${reason} Fallback mode is active. Use Recheck after fixing key or quota settings.`;
+    if (result?.geminiUsed) {
+      setAiDelivery({ mode: 'gemini', detail: 'Latest reply came from Gemini.' });
+      return;
     }
 
-    addBotMessage(note, { tags: { emotion: 'System', stress: 'AI Status' } });
-    setGeminiNoticeShown(true);
+    if (!hasStoredGeminiKey) {
+      setAiDelivery({ mode: 'fallback', detail: 'Fallback active: no Gemini key saved.' });
+      return;
+    }
+
+    setAiDelivery({ mode: 'fallback', detail: summarizeGeminiError(result?.geminiError) });
   };
 
   const handleSendMessage = async (e) => {
@@ -280,7 +272,7 @@ export default function CheckIn() {
             stress: `${result.stressLevel} Stress`,
           },
         });
-        maybeShowGeminiNotice(result);
+        updateAiDeliveryIndicator(result);
         if (!resultsLinkShown) {
           addBotMessage('Your result card is ready. Open it anytime while we keep chatting.', { showResultsLink: true });
           setResultsLinkShown(true);
@@ -289,6 +281,7 @@ export default function CheckIn() {
         const fallback = getFallbackResponse();
         persistResult(fallback, nextUserData);
         addBotMessage(fallback.ayasaResponse);
+        updateAiDeliveryIndicator(fallback);
         if (!resultsLinkShown) {
           addBotMessage('Your latest check-in is saved. You can open Results whenever you want.', { showResultsLink: true });
           setResultsLinkShown(true);
@@ -308,11 +301,12 @@ export default function CheckIn() {
             stress: `${result.stressLevel} Stress`,
           },
         });
-        maybeShowGeminiNotice(result);
+        updateAiDeliveryIndicator(result);
       } catch (err) {
         const fallback = getFallbackResponse();
         persistResult(fallback, userData);
         addBotMessage(fallback.ayasaResponse);
+        updateAiDeliveryIndicator(fallback);
       } finally {
         setLoading(false);
       }
@@ -337,7 +331,7 @@ export default function CheckIn() {
     setLoading(false);
     setUserData(initialUserData);
     setResultsLinkShown(false);
-    setGeminiNoticeShown(false);
+    setAiDelivery({ mode: 'unknown', detail: 'Waiting for first reply.' });
 
     requestAnimationFrame(() => inputRef.current?.focus());
   };
@@ -357,6 +351,10 @@ export default function CheckIn() {
     : (!aiRuntime.available
       ? 'ML Offline'
       : (aiRuntime.geminiActive || hasStoredGeminiKey ? 'Gemini Ready' : 'Key Missing'));
+  const deliveryMode = aiDelivery.mode === 'unknown'
+    ? (aiRuntimeTone === 'ready' ? 'gemini' : 'fallback')
+    : aiDelivery.mode;
+  const deliveryLabel = deliveryMode === 'gemini' ? 'Gemini first' : 'Fallback replies';
 
   return (
     <div className="sanctuary-chat">
@@ -385,18 +383,15 @@ export default function CheckIn() {
                   </span>
                   {aiRuntimeLabel}
                 </span>
-                <button
-                  type="button"
-                  className="ai-runtime-recheck ai-runtime-recheck-compact"
-                  onClick={recheckAiRuntime}
-                  disabled={aiRuntimeRefreshing}
-                  title="Recheck AI status"
+                <span
+                  className={`ai-delivery-chip ai-delivery-${deliveryMode}`}
+                  title={aiDelivery.detail}
                 >
                   <span className="material-symbols-rounded" style={{ fontSize: 13 }}>
-                    {aiRuntimeRefreshing ? 'hourglass_top' : 'refresh'}
+                    {deliveryMode === 'gemini' ? 'auto_awesome' : 'forum'}
                   </span>
-                  Recheck
-                </button>
+                  {deliveryLabel}
+                </span>
               </div>
             </div>
           </div>

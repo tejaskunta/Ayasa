@@ -1,8 +1,34 @@
 const axios = require('axios');
+const crypto = require('crypto');
 const ML_BASE_URL = process.env.ML_BACKEND_URL || 'http://localhost:8000';
+const CHECKIN_DEDUP_WINDOW_MS = Math.max(1000, Number(process.env.CHECKIN_DEDUP_WINDOW_MS) || 15000);
 
 // In-memory check-in history (demo — replace with MongoDB for production)
 const checkInHistory = [];
+const recentCheckIns = new Map();
+
+const normalizeInputForDedup = (value = '') => String(value).toLowerCase().trim().replace(/\s+/g, ' ');
+
+const keyFingerprintForDedup = (geminiApiKey = '') => {
+  const cleanKey = String(geminiApiKey || '').trim();
+  if (!cleanKey) return 'no-key';
+  return crypto.createHash('sha256').update(cleanKey).digest('hex').slice(0, 12);
+};
+
+const buildDedupKey = (userId, userInput, geminiApiKey) => {
+  const safeUserId = String(userId || 'demo_user').trim().toLowerCase();
+  const keyFingerprint = keyFingerprintForDedup(geminiApiKey);
+  return `${safeUserId}|${keyFingerprint}|${normalizeInputForDedup(userInput)}`;
+};
+
+const pruneRecentCheckIns = () => {
+  const now = Date.now();
+  for (const [key, entry] of recentCheckIns.entries()) {
+    if (!entry || now - entry.createdAt > CHECKIN_DEDUP_WINDOW_MS * 2) {
+      recentCheckIns.delete(key);
+    }
+  }
+};
 
 const normalizePredictPayload = (payload = {}) => ({
   stressLevel: payload.stressLevel,
@@ -104,6 +130,19 @@ exports.submitCheckIn = async (req, res) => {
       return res.status(400).json({ error: 'User input is required' });
     }
 
+    pruneRecentCheckIns();
+    const dedupKey = buildDedupKey(userId, userInput, geminiApiKey);
+    const recentEntry = recentCheckIns.get(dedupKey);
+    const now = Date.now();
+
+    if (recentEntry && now - recentEntry.createdAt <= CHECKIN_DEDUP_WINDOW_MS) {
+      return res.json({
+        message: 'Duplicate check-in suppressed; returning previous result',
+        result: recentEntry.result,
+        deduplicated: true,
+      });
+    }
+
     let stressLevel, emotion, ayasaResponse, confidence, resources, directScoreQuery, geminiUsed, geminiError;
 
     try {
@@ -147,6 +186,10 @@ exports.submitCheckIn = async (req, res) => {
     };
 
     checkInHistory.push(checkInData);
+    recentCheckIns.set(dedupKey, {
+      createdAt: Date.now(),
+      result: checkInData,
+    });
 
     res.json({
       message: 'Check-in submitted successfully',

@@ -103,7 +103,6 @@ export default function Home() {
   const [showKey, setShowKey]           = useState(false);
   const [history, setHistory]           = useState([]);
   const [aiRuntime, setAiRuntime]       = useState({ loading: true, available: false, geminiActive: false, error: null });
-  const [aiRuntimeRefreshing, setAiRuntimeRefreshing] = useState(false);
 
   useEffect(() => { setHistory(getHistory()); }, []);
 
@@ -125,15 +124,6 @@ export default function Home() {
         error: 'Unable to reach backend runtime status.',
       };
     }
-  };
-
-  const recheckAiRuntime = async () => {
-    if (aiRuntimeRefreshing) return;
-    setAiRuntimeRefreshing(true);
-    setAiRuntime(prev => ({ ...prev, loading: true }));
-    const next = await loadAiRuntimeStatus();
-    setAiRuntime(next);
-    setAiRuntimeRefreshing(false);
   };
 
   useEffect(() => {
@@ -214,13 +204,21 @@ export default function Home() {
     <div className="home-container">
       {/* ── Navbar ─────────────────── */}
       <header className="navbar">
-        <Link to="/home" className="navbar-brand">AYASA</Link>
+        <Link to="/" className="navbar-brand">AYASA</Link>
         <nav className="navbar-links">
           <Link to="/home" className="active">Dashboard</Link>
           <Link to="/checkin">Journal</Link>
           <Link to="/history">History</Link>
         </nav>
         <div className="navbar-right">
+          <div className="navbar-runtime" title={runtimeLabel}>
+            <span className={`ai-runtime-pill ai-runtime-${runtimeTone} ai-runtime-compact`}>
+              <span className="material-symbols-rounded" style={{ fontSize: 13 }}>
+                {runtimeTone === 'ready' ? 'check_circle' : runtimeTone === 'offline' ? 'cloud_off' : runtimeTone === 'warn' ? 'key_off' : 'progress_activity'}
+              </span>
+              {runtimeTone === 'ready' ? 'Gemini Ready' : runtimeTone === 'warn' ? 'Fallback Mode' : runtimeTone === 'offline' ? 'AI Offline' : 'Checking'}
+            </span>
+          </div>
           <div className="navbar-avatar">{(user.fullName || 'U').charAt(0).toUpperCase()}</div>
           <button className="btn-logout" onClick={handleLogout}>
             <span className="material-symbols-rounded" style={{ fontSize: 15 }}>logout</span>
@@ -499,32 +497,14 @@ export default function Home() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '0.9rem' }}>
               <span className="material-symbols-outlined" style={{ color: '#cebdff', fontSize: 20 }}>key</span>
               <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#1b1f2c', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>Gemini API Key</h3>
-              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className={`ai-runtime-pill ai-runtime-${runtimeTone}`}>
-                  <span className="material-symbols-rounded" style={{ fontSize: 14 }}>
-                    {runtimeTone === 'ready' ? 'check_circle' : runtimeTone === 'offline' ? 'cloud_off' : runtimeTone === 'warn' ? 'key_off' : 'progress_activity'}
-                  </span>
-                  {runtimeLabel}
-                </span>
-                <button
-                  type="button"
-                  className="ai-runtime-recheck"
-                  onClick={recheckAiRuntime}
-                  disabled={aiRuntimeRefreshing}
-                  title="Recheck AI status"
-                >
-                  <span className="material-symbols-rounded" style={{ fontSize: 14 }}>
-                    {aiRuntimeRefreshing ? 'hourglass_top' : 'refresh'}
-                  </span>
-                  Recheck
-                </button>
-              </div>
             </div>
             <p style={{ fontSize: '0.78rem', color: '#85948e', margin: '0 0 0.9rem', fontFamily: 'DM Sans, sans-serif' }}>
               Required for AI responses.{' '}
               <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" style={{ color: '#cebdff', textDecoration: 'none' }}>Get yours here</a>
             </p>
-            <p className="ai-runtime-hint" style={{ marginTop: '-0.2rem' }}>{runtimeHint}</p>
+            <p className="ai-runtime-hint" style={{ marginTop: '-0.2rem' }}>
+              Status: {runtimeLabel}. {runtimeHint}
+            </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <div style={{ position: 'relative', flex: 1 }}>
                 <input
