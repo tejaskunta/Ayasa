@@ -13,6 +13,7 @@ server/.env.local
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+text for info/
 
 .git_disabled/
 server/data/users.json

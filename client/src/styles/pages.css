@@ -314,14 +314,14 @@ body {
 
 /* ── Landing Therapy ────────────────────────────────────────────────────── */
 .therapy-landing {
-  --therapy-bg: #d1dae4;
-  --therapy-paper: #f3f6fb;
-  --therapy-ink: #232f3c;
-  --therapy-muted: #65788d;
-  --therapy-accent: #55718e;
-  --therapy-border: #d4deea;
-  --therapy-dark: #1f2e40;
-  background: var(--therapy-bg);
+  --therapy-bg:     #c8dff0;
+  --therapy-paper:  #deedf8;
+  --therapy-ink:    #0c1e38;
+  --therapy-muted:  #2a4e78;
+  --therapy-accent: #1535d5;
+  --therapy-border: #9ec8e8;
+  --therapy-dark:   #091638;
+  background: #d4e5f2;
   min-height: 100vh;
   padding: 0;
   box-sizing: border-box;
@@ -355,9 +355,7 @@ body {
 .therapy-hero-overlay {
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(180deg, rgba(27, 38, 52, 0.46), rgba(26, 38, 56, 0.62)),
-    linear-gradient(to right, rgba(26, 39, 55, 0.44), rgba(26, 39, 55, 0.08));
+  background: rgba(12, 34, 90, 0.45);
 }
 
 .therapy-nav {
@@ -408,15 +406,16 @@ body {
 
 .therapy-contact-btn {
   text-decoration: none;
-  color: #213246;
-  background: #f2f7ff;
-  border: 1px solid rgba(80, 106, 134, 0.25);
+  color: #081840;
+  background: rgba(210, 235, 255, 0.88);
+  border: 1px solid rgba(80, 140, 210, 0.32);
   border-radius: 999px;
   padding: 0.42rem 0.9rem;
   font-size: 0.66rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   font-weight: 800;
+  backdrop-filter: blur(6px);
 }
 
 .therapy-hero-content {
@@ -544,7 +543,7 @@ body {
   line-height: 0.96;
   letter-spacing: -0.01em;
   font-weight: 600;
-  color: #243245;
+  color: #081840;
 }
 
 .therapy-heading-row p {
@@ -579,9 +578,10 @@ body {
 }
 
 .therapy-about-grid aside div {
-  background: #f7fbff;
-  border: 1px solid var(--therapy-border);
+  background: rgba(200, 228, 252, 0.65);
+  border: 1px solid rgba(80, 140, 210, 0.28);
   padding: 0.9rem;
+  backdrop-filter: blur(8px);
 }
 
 .therapy-about-grid aside strong {
@@ -871,7 +871,7 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  background: linear-gradient(180deg, #edf4fe, #d9e7f8);
+  background: #e7f1fb;
 }
 
 .therapy-cta h2 {
@@ -4549,5 +4549,877 @@ body {
     width: 66px;
     height: 66px;
   }
+}
+
+/* ── v3.1 Chat UI Refresh ─────────────────────────────────────────────────── */
+
+/* Hero: flex column, centered, orb inside */
+.mainchat-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.2rem 1.5rem 0.9rem;
+}
+
+/* Orb inside hero: centered, proper sizing */
+.mainchat-hero .mainchat-orb-dock {
+  position: static;
+  margin: 0 auto 0;
+  width: 80px;
+  height: 80px;
+  align-self: center;
+  justify-self: center;
+}
+
+/* Headings: smaller top margin since orb is now above */
+.mainchat-hero h1 {
+  margin-top: 0.55rem;
+}
+.mainchat-hero h2 {
+  margin-top: 0.22rem;
+}
+.mainchat-hero p {
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+  color: #566d86;
+}
+
+/* Prompt grid: 4 columns, card style */
+.mainchat-prompt-grid {
+  margin-top: 1.1rem;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  max-width: 900px;
+  width: 100%;
+  gap: 0.52rem;
+}
+
+.mainchat-prompt-chip {
+  border-radius: 12px;
+  padding: 0.68rem 0.76rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(120, 148, 172, 0.22);
+  color: #243548;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  letter-spacing: 0.01em;
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.mainchat-prompt-chip:hover {
+  border-color: rgba(74, 163, 255, 0.38);
+  background: #edf6ff;
+  box-shadow: 0 2px 8px rgba(74, 163, 255, 0.08);
+}
+
+/* Refresh prompts link */
+.mainchat-refresh-prompts {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  margin-top: 0.55rem;
+  border: none;
+  background: transparent;
+  color: #6a8099;
+  font-size: 0.71rem;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  padding: 0.18rem 0.4rem;
+  border-radius: 8px;
+  transition: color 0.18s ease;
+}
+.mainchat-refresh-prompts:hover { color: #2e6096; }
+.mainchat-refresh-prompts .material-symbols-rounded {
+  font-size: 0.88rem;
+}
+
+/* Composer: full-width input shell with bottom bar */
+.mainchat-composer {
+  padding: 0.6rem 0.85rem 0.75rem;
+  background: #f9fbff;
+  border-top: 1px solid rgba(114, 138, 155, 0.16);
+}
+
+.mainchat-input-shell {
+  border: 1px solid rgba(114, 138, 155, 0.28);
+  border-radius: 16px;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.mainchat-input-shell:focus-within {
+  border-color: rgba(74, 163, 255, 0.42);
+  box-shadow: 0 2px 16px rgba(74, 163, 255, 0.1);
+}
+
+.mainchat-composer textarea {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  min-height: 128px;
+  max-height: 200px;
+  padding: 0.95rem 1rem 0.5rem;
+  box-shadow: none;
+  resize: none;
+  outline: none;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.mainchat-composer textarea:focus {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+/* Bottom bar inside input shell */
+.mainchat-composer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.38rem 0.55rem 0.38rem 0.7rem;
+  border-top: 1px solid rgba(114, 138, 155, 0.12);
+  background: #fafcff;
+}
+
+.mainchat-composer-hint {
+  font-size: 0.62rem;
+  color: #4a6880;
+  opacity: 0.7;
+  user-select: none;
+}
+
+.mainchat-composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Send button: inside the shell now */
+.mainchat-send-btn {
+  position: static;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(145deg, #2f84ff, #1e66d0);
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(47, 132, 255, 0.28);
+  transition: opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mainchat-send-btn:disabled {
+  opacity: 0.36;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.mainchat-send-btn .material-symbols-rounded {
+  font-size: 1rem;
+}
+
+/* Hide old external input row / foot */
+.mainchat-input-row { display: block; }
+.mainchat-composer-foot { display: none; }
+.mainchat-send-btn.external { display: none; }
+
+/* Header: slightly tighter */
+.mainchat-header {
+  min-height: 52px;
+  padding: 0.6rem 0.85rem;
+}
+
+/* Message bubbles: readable body text */
+.mainchat-msg-bubble p {
+  font-size: 0.88rem;
+  line-height: 1.63;
+}
+
+/* Sidebar: clean white surface */
+.mainchat-sidebar {
+  background: #f8fbff;
+}
+
+/* Main panel: slightly lighter bg matching screenshot */
+.mainchat-main {
+  background: linear-gradient(155deg, #f2fbf6 0%, #f7fbff 60%, #f3f6ff 100%);
+}
+
+/* User avatar: slightly larger and more prominent */
+.mainchat-user-avatar {
+  width: 34px;
+  height: 34px;
+  font-size: 0.78rem;
+  background: #e4f0ea;
+  color: #2f5044;
+  border: 1.5px solid rgba(80, 140, 100, 0.22);
+}
+
+@media (max-width: 1080px) {
+  .mainchat-prompt-grid {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .mainchat-prompt-grid {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 100%;
+  }
+  .mainchat-hero .mainchat-orb-dock {
+    width: 68px;
+    height: 68px;
+  }
+}
+
+/* ── v3.2 Light-Blue Gradient Theme + Sidebar Redesign ───────────────────── */
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PAGE BACKGROUND — faithful recreation of the two reference images:
+   • Image 1: Electric cobalt-blue base, bright white diagonal beam top-left
+     → bottom-right, far right corner fades to deep navy/black.
+   • Image 2: Light sky-cyan base, two large dark-blue organic blob shapes
+     (upper-right and centre-left).
+   Combined: light cyan top-left fading to electric blue bottom-right,
+   dark organic shapes mid-canvas, white diagonal beam as highlight.
+   ══════════════════════════════════════════════════════════════════════════ */
+.mainchat-page {
+  /* layer 6 (top) — grain/noise texture like the photos */
+  /* layer 5 — white diagonal beam (image 1 light streak) */
+  /* layer 4 — deep navy fade on right edge (image 1 dark corner) */
+  /* layer 3 — dark blob upper-right (image 2) */
+  /* layer 2 — dark flowing shape centre-left (image 2) */
+  /* layer 1 (bottom) — base gradient: cyan → electric blue */
+  background-color: #c2dff0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23g)' opacity='0.065'/%3E%3C/svg%3E"),
+    linear-gradient(138deg,
+      transparent 0%,  transparent 18%,
+      rgba(190,228,252,0.22) 30%, rgba(228,248,255,0.68) 44%,
+      rgba(242,252,255,0.82) 50%,
+      rgba(228,248,255,0.68) 56%, rgba(190,228,252,0.22) 70%,
+      transparent 82%, transparent 100%
+    ),
+    radial-gradient(ellipse 62% 72% at 102% -2%, rgba(4,10,52,0.6) 0%, rgba(8,18,72,0.38) 30%, transparent 62%),
+    radial-gradient(ellipse 50% 44% at 76% 18%, rgba(42,68,142,0.52) 0%, rgba(38,62,132,0.28) 42%, transparent 62%),
+    radial-gradient(ellipse 58% 40% at 18% 68%, rgba(48,76,150,0.44) 0%, rgba(44,70,142,0.22) 42%, transparent 60%),
+    linear-gradient(148deg,
+      #c4e0f4 0%,  #cae6f8 10%, #d0ebfb 20%,
+      #d4edfb 30%, #ceebf8 42%, #c6e2f5 52%,
+      #88b4e8 62%, #3460d8 72%,
+      #1a38d5 82%, #0e26b8 92%, #0818a0 100%
+    );
+  background-size: 256px 256px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  background-attachment: fixed;
+  color: #0e1e38;
+}
+
+/* Main chat panel — frosted glass so the background gradient shows through */
+.mainchat-main {
+  background: rgba(218, 238, 255, 0.62);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border: 1px solid rgba(80, 140, 210, 0.22);
+  box-shadow: 0 8px 48px rgba(12, 40, 160, 0.14);
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────────────── */
+.mainchat-sidebar {
+  width: 288px;
+  background: rgba(186, 218, 245, 0.78);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border-right: 1px solid rgba(80, 140, 210, 0.26);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  gap: 0;
+}
+
+.mainchat-page.sidebar-collapsed .mainchat-sidebar {
+  width: 62px;
+}
+
+/* Sidebar header */
+.mainchat-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 0.85rem 0.75rem;
+  border-bottom: 1px solid rgba(80, 140, 210, 0.16);
+  flex-shrink: 0;
+}
+
+.mainchat-logo-text {
+  font-family: 'Cormorant Garamond', 'Noto Serif', serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0c2250;
+  letter-spacing: 0.02em;
+}
+
+.mainchat-logo .material-symbols-rounded {
+  color: #1a4db8;
+  font-size: 1.1rem;
+}
+
+/* New chat button in header */
+.mainchat-new-chat-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(60, 120, 200, 0.3);
+  background: rgba(255, 255, 255, 0.55);
+  color: #1a4db8;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.18s ease;
+}
+.mainchat-new-chat-btn:hover {
+  background: rgba(255, 255, 255, 0.82);
+}
+.mainchat-new-chat-btn .material-symbols-rounded { font-size: 1rem; }
+
+/* Collapse/expand icon button */
+.mainchat-icon-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(60, 120, 200, 0.25);
+  background: rgba(255, 255, 255, 0.45);
+  color: #1a4db8;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.18s ease;
+}
+.mainchat-icon-btn:hover { background: rgba(255, 255, 255, 0.72); }
+.mainchat-icon-btn .material-symbols-rounded { font-size: 0.95rem; }
+
+/* Scrollable body */
+.mainchat-sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-height: 0;
+}
+
+/* AI status row */
+.mainchat-status-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  flex-wrap: wrap;
+  background: rgba(255, 255, 255, 0.48);
+  border: 1px solid rgba(70, 130, 200, 0.22);
+  border-radius: 999px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.68rem;
+}
+
+.mainchat-status-label {
+  font-weight: 600;
+  color: #0e2550;
+}
+
+/* Section label */
+.mainchat-section-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #2a5080;
+  padding: 0.1rem 0.1rem 0;
+}
+
+/* History list */
+.mainchat-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.mainchat-history-item {
+  width: 100%;
+  border: 1px solid rgba(70, 130, 200, 0.2);
+  background: rgba(255, 255, 255, 0.58);
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+.mainchat-history-item:hover {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(30, 90, 200, 0.35);
+}
+.mainchat-history-item.active {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(30, 90, 200, 0.5);
+  box-shadow: 0 2px 10px rgba(30, 80, 200, 0.12);
+}
+
+.mainchat-history-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-bottom: 0.22rem;
+}
+
+.mainchat-history-time {
+  font-size: 0.56rem;
+  color: #3a5878;
+  font-weight: 600;
+}
+
+.mainchat-history-emotion {
+  margin: 0 0 0.18rem;
+  font-size: 0.6rem;
+  color: #3a5878;
+  text-transform: capitalize;
+  font-weight: 500;
+}
+
+.mainchat-history-item p {
+  margin: 0;
+  font-size: 0.68rem;
+  line-height: 1.48;
+  color: #1a3258;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Stress badges */
+.mainchat-stress-badge {
+  border-radius: 999px;
+  padding: 0.14rem 0.44rem;
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.mainchat-stress-badge.high     { color: #8b1a22; background: rgba(255, 160, 160, 0.28); }
+.mainchat-stress-badge.moderate { color: #2a3a8a; background: rgba(160, 180, 255, 0.28); }
+.mainchat-stress-badge.low      { color: #0d4080; background: rgba(100, 180, 255, 0.28); }
+
+/* Collapsible toggles */
+.mainchat-collapsible {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.mainchat-collapse-toggle {
+  width: 100%;
+  border: 1px solid rgba(70, 130, 200, 0.22);
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 10px;
+  padding: 0.48rem 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.67rem;
+  font-weight: 700;
+  color: #0e2550;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 0.16s ease;
+}
+.mainchat-collapse-toggle:hover { background: rgba(255, 255, 255, 0.78); }
+.mainchat-collapse-toggle .material-symbols-rounded { font-size: 0.9rem; color: #1a4db8; }
+.mainchat-collapse-toggle .chevron {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+  color: #3a5878;
+}
+.mainchat-collapse-toggle .chevron.open { transform: rotate(180deg); }
+
+/* Detail cards inside collapsibles */
+.mainchat-detail-card {
+  border: 1px solid rgba(70, 130, 200, 0.2);
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 10px;
+  padding: 0.65rem;
+}
+.mainchat-detail-card h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #1a3870;
+}
+.mainchat-detail-card p {
+  margin: 0.24rem 0;
+  font-size: 0.66rem;
+  line-height: 1.5;
+  color: #1a3258;
+}
+
+/* Profile email */
+.mainchat-profile-email {
+  font-size: 0.64rem !important;
+  color: #2a5080 !important;
+  margin-bottom: 0.35rem !important;
+}
+
+/* Insight snippet inside analytics card */
+.mainchat-insight-snippet {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(70, 130, 200, 0.16);
+}
+.mainchat-insight-snippet .material-symbols-rounded {
+  font-size: 0.9rem;
+  color: #1a4db8;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+.mainchat-insight-snippet p {
+  font-size: 0.64rem !important;
+  color: #1a3870 !important;
+}
+
+/* Bottom user strip */
+.mainchat-sidebar-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.8rem;
+  border-top: 1px solid rgba(70, 130, 200, 0.18);
+  background: rgba(160, 200, 235, 0.35);
+  flex-shrink: 0;
+  gap: 0.4rem;
+}
+
+.mainchat-user-strip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  min-width: 0;
+  flex: 1;
+}
+
+.mainchat-sidebar-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1a4db8, #2060d8);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mainchat-sidebar-username {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #0e2550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mainchat-logout-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(60, 100, 180, 0.25);
+  background: rgba(255, 255, 255, 0.42);
+  color: #1a3870;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+.mainchat-logout-icon:hover { background: rgba(255, 100, 100, 0.12); color: #8b1a22; }
+.mainchat-logout-icon .material-symbols-rounded { font-size: 0.95rem; }
+
+/* ── Main area blue tint ──────────────────────────────────────────────────── */
+.mainchat-header {
+  background: transparent;
+  min-height: 52px;
+  padding: 0.6rem 0.85rem;
+}
+
+/* Hero text in deep navy */
+.mainchat-hero h1 { color: #0a1e48; }
+.mainchat-hero h2 { color: #1a3870; }
+.mainchat-hero p  { color: #2a5080; }
+
+/* Prompt chips: white glass */
+.mainchat-prompt-chip {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(60, 120, 200, 0.22);
+  color: #0e2550;
+}
+.mainchat-prompt-chip:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(30, 90, 200, 0.42);
+  box-shadow: 0 2px 10px rgba(30, 80, 200, 0.1);
+}
+
+/* User message: deep blue */
+.mainchat-msg.user .mainchat-msg-bubble {
+  background: linear-gradient(135deg, #1a40d0 0%, #1530b0 100%);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(20, 50, 180, 0.28);
+}
+.mainchat-msg.user .mainchat-msg-bubble p { color: #ffffff; }
+
+/* Assistant message: white glass */
+.mainchat-msg-bubble {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(70, 130, 200, 0.2);
+  backdrop-filter: blur(4px);
+}
+
+/* Composer: white glass */
+.mainchat-composer {
+  background: rgba(210, 232, 252, 0.6);
+  border-top: 1px solid rgba(70, 130, 200, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.mainchat-input-shell {
+  border-color: rgba(60, 120, 200, 0.3);
+  background: rgba(255, 255, 255, 0.92);
+}
+.mainchat-input-shell:focus-within {
+  border-color: rgba(30, 90, 200, 0.52);
+  box-shadow: 0 2px 16px rgba(30, 90, 200, 0.12);
+}
+
+.mainchat-composer-bar { background: rgba(225, 240, 255, 0.7); }
+.mainchat-model-pill { color: #1a3870; }
+.mainchat-model-pill .material-symbols-rounded { color: #1a4db8; }
+
+.mainchat-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.65rem;
+}
+
+.mainchat-input-row .mainchat-input-shell {
+  flex: 1;
+}
+
+.mainchat-input-row .mainchat-orb-dock {
+  width: 78px;
+  height: 78px;
+  margin: 0 0 0.2rem;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 680px) {
+  .mainchat-input-row .mainchat-orb-dock {
+    width: 62px;
+    height: 62px;
+  }
+}
+
+/* User avatar: blue gradient */
+.mainchat-user-avatar {
+  background: linear-gradient(135deg, #1a4db8, #2060d8);
+  color: #ffffff;
+  border: none;
+}
+
+/* Scrollbar: blue tint */
+.mainchat-sidebar-scroll::-webkit-scrollbar,
+.mainchat-history-list::-webkit-scrollbar { width: 4px; }
+.mainchat-sidebar-scroll::-webkit-scrollbar-thumb,
+.mainchat-history-list::-webkit-scrollbar-thumb {
+  background: rgba(50, 110, 200, 0.22);
+  border-radius: 4px;
+}
+
+@media (max-width: 1080px) {
+  .mainchat-sidebar { width: 100%; }
+  .mainchat-page.sidebar-collapsed .mainchat-sidebar { width: 100%; }
+}
+
+/* ── v3.2 Landing Page Blue-Gradient Overrides ───────────────────────────── */
+
+/* About / FAQ sections — frosted glass panels over the blue gradient */
+.therapy-about,
+.therapy-faq {
+  background: rgba(190, 222, 248, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(80, 140, 210, 0.22);
+  border-bottom: 1px solid rgba(80, 140, 210, 0.18);
+}
+
+.therapy-heading-row span { color: #1535d5; }
+
+/* Mini stat cards */
+.therapy-mini-cards article {
+  border-top-color: rgba(80, 140, 210, 0.35);
+}
+.therapy-mini-cards span { color: #1535d5; }
+.therapy-mini-cards h3    { color: #081840; }
+
+/* Process / bento cards */
+.therapy-bento article,
+.therapy-process-card {
+  background: rgba(200, 228, 252, 0.55) !important;
+  border: 1px solid rgba(80, 140, 210, 0.28) !important;
+  backdrop-filter: blur(8px);
+}
+
+/* Pill buttons: keep primary blue, update ghost */
+.therapy-pill-btn {
+  background: rgba(210, 235, 255, 0.82);
+  border-color: rgba(80, 140, 210, 0.3);
+  color: #081840;
+}
+.therapy-pill-btn.dark {
+  background: linear-gradient(135deg, #1535d5 0%, #0e26b0 100%);
+  border-color: transparent;
+  color: #e8f4ff;
+}
+.therapy-pill-btn.light {
+  background: rgba(220, 240, 255, 0.88);
+  color: #0a1e3a;
+}
+
+/* FAQ items */
+.therapy-faq-item {
+  background: rgba(200, 228, 252, 0.55);
+  border: 1px solid rgba(80, 140, 210, 0.25);
+  backdrop-filter: blur(8px);
+}
+
+/* Footer / bottom bar */
+.therapy-footer,
+.therapy-bottom-bar {
+  background: rgba(8, 24, 80, 0.85);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(80, 140, 210, 0.28);
+  color: #c8e4f8;
+}
+
+/* Auth pages: match the blue theme */
+.auth-container {
+  background: linear-gradient(150deg, #cce4f5 0%, #d8eefb 40%, #ccdff5 100%);
+}
+
+.auth-card {
+  background: rgba(220, 240, 255, 0.82);
+  border: 1px solid rgba(80, 140, 210, 0.3);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 20px 60px rgba(12, 40, 160, 0.18);
+}
+
+.auth-card h1 { color: #081840; }
+.auth-card p  { color: #1a3870; }
+
+/* form inputs on auth pages */
+.auth-card input,
+.form-group input {
+  background: rgba(240, 250, 255, 0.92);
+  border-color: rgba(80, 140, 210, 0.3);
+  color: #081840;
+}
+.auth-card input:focus,
+.form-group input:focus {
+  border-color: rgba(30, 80, 200, 0.55);
+  box-shadow: 0 0 0 3px rgba(30, 80, 200, 0.1);
+}
+
+/* Back/nav links on auth pages */
+.auth-top-link {
+  background: rgba(210, 235, 255, 0.82);
+  border-color: rgba(80, 140, 210, 0.3);
+  color: #081840;
+  backdrop-filter: blur(6px);
+}
+
+/* Final: sidebar collapse control sits under logo without overflow */
+.mainchat-sidebar-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.42rem;
+}
+
+.mainchat-sidebar-head-actions {
+  width: auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.42rem;
+  justify-content: flex-start;
+}
+
+.mainchat-page.sidebar-collapsed .mainchat-sidebar-head {
+  align-items: center;
+}
+
+.mainchat-page.sidebar-collapsed .mainchat-logo {
+  width: 100%;
+  justify-content: center;
+}
+
+.mainchat-page.sidebar-collapsed .mainchat-sidebar-head-actions {
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Footer contrast: separate clearly from landing background */
+.therapy-footer,
+.therapy-bottom-bar {
+  background: #0b234a;
+  border-top: 1px solid rgba(108, 161, 225, 0.45);
+  color: #deeeff;
+}
+
+.therapy-footer-top h3,
+.therapy-footer-top p,
+.therapy-footer-grid h4,
+.therapy-footer-grid small,
+.therapy-footer-grid .therapy-logo,
+.therapy-footer-grid .therapy-logo .material-symbols-rounded,
+.therapy-footer-grid nav a {
+  color: #deeeff;
+}
+
+.therapy-footer-grid nav a:hover {
+  color: #ffffff;
 }
 

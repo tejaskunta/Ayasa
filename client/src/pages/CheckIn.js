@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import API_BASE from '../utils/api';
 import '../styles/pages.css';
 
 const initialMessages = [
@@ -87,7 +88,7 @@ export default function CheckIn() {
 
   const loadAiRuntimeStatus = async () => {
     try {
-      const response = await fetch('/api/checkin/ml-health');
+      const response = await fetch(`${API_BASE}/api/checkin/ml-health`);
       const data = await response.json().catch(() => ({}));
       return {
         loading: false,
@@ -144,7 +145,7 @@ export default function CheckIn() {
 
   const submitForAnalysis = async (userInput) => {
     const activeUserId = getUserEmail();
-    const response = await fetch('/api/checkin/submit', {
+    const response = await fetch(`${API_BASE}/api/checkin/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

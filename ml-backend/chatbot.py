@@ -21,30 +21,6 @@ CRISIS_MESSAGE = (
     "If possible, stay with someone you trust and tell them how you feel right now."
 )
 
-SAFE_RESPONSE_BANK = {
-    "deep_support": (
-        "That sounds very heavy, and I am here with you. "
-        "Let us slow this down for one minute with gentle breathing. "
-        "What feels most intense in your body right now?"
-    ),
-    "calm_validation": (
-        "I can hear the frustration in this, and it makes sense. "
-        "When pressure builds, anger can feel sharp and immediate. "
-        "What is the exact trigger that set this off today?"
-    ),
-    "empathetic_probe": (
-        "Thank you for being honest about how this feels. "
-        "You are carrying stress, but there is still room to regain control. "
-        "Which part feels hardest at this moment?"
-    ),
-    "light_checkin": (
-        "You are checking in thoughtfully, which is a strong step. "
-        "Your current stress signal looks manageable. "
-        "What would make the next hour feel lighter for you?"
-    ),
-}
-
-
 def _pick_variant(user_input: str, variants: list[str]) -> str:
     if not variants:
         return ""
@@ -105,10 +81,7 @@ def chatbot_reply(user_input: str, stress_output: Dict[str, object], llm_api_key
         }
 
     fallback_strategy = strategy if strategy in FALLBACK_VARIANTS else "empathetic_probe"
-    fallback_text = _pick_variant(user_input, FALLBACK_VARIANTS[fallback_strategy]) or SAFE_RESPONSE_BANK.get(
-        fallback_strategy,
-        SAFE_RESPONSE_BANK["empathetic_probe"],
-    )
+    fallback_text = _pick_variant(user_input, FALLBACK_VARIANTS[fallback_strategy])
 
     return {
         "text": fallback_text,

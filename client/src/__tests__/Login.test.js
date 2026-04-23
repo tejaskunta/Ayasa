@@ -1,10 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import axios from 'axios';
 import Login from '../pages/Login';
 
-jest.mock('axios');
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => jest.fn(),
@@ -22,6 +20,7 @@ describe('Login page', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
+    global.fetch = jest.fn();
   });
 
   test('renders email and password fields', () => {
@@ -36,8 +35,9 @@ describe('Login page', () => {
   });
 
   test('shows error when credentials are invalid', async () => {
-    axios.post.mockRejectedValue({
-      response: { data: { error: 'Invalid email or password' } },
+    global.fetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ error: 'Invalid email or password' }),
     });
     renderLogin();
     fireEvent.change(screen.getByPlaceholderText(/email/i), { target: { value: 'bad@example.com' } });
@@ -49,8 +49,9 @@ describe('Login page', () => {
   });
 
   test('saves token to localStorage on successful login', async () => {
-    axios.post.mockResolvedValue({
-      data: { token: 'test_jwt_token', user: { email: 'ok@example.com', fullName: 'Test' } },
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ token: 'test_jwt_token', user: { email: 'ok@example.com', fullName: 'Test' } }),
     });
     renderLogin();
     fireEvent.change(screen.getByPlaceholderText(/email/i), { target: { value: 'ok@example.com' } });
@@ -63,6 +64,6 @@ describe('Login page', () => {
 
   test('has a link to register page', () => {
     renderLogin();
-    expect(screen.getByRole('link', { name: /register|sign up|create/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /create account|create one/i }).length).toBeGreaterThan(0);
   });
 });

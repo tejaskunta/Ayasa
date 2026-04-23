@@ -53,7 +53,6 @@ services:
   - type: web
     name: ayasa-client
     runtime: static
-    region: oregon
     plan: free
     rootDir: client
     buildCommand: npm install && npm run build

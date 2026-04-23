@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Orb from '../components/Orb';
+import API_BASE from '../utils/api';
 import '../styles/pages.css';
 
 function getUserEmail() {
@@ -21,6 +22,11 @@ function getMessageStoreKey() {
 function getSessionStoreKey() {
   const email = getUserEmail();
   return `ayasa_session_id:${email}`;
+}
+
+function getHistoryStoreKey() {
+  const email = getUserEmail();
+  return `ayasa_history:${email}`;
 }
 
 function getToken() {
@@ -453,18 +459,35 @@ export default function Home() {
     return 'Good evening';
   }, []);
 
-  const [messages, setMessages] = useState(() => [
-    {
+  const [messages, setMessages] = useState(() => {
+    try {
+      const email = JSON.parse(localStorage.getItem('user'))?.email || 'default';
+      const raw = localStorage.getItem(`ayasa_chat_history:${email}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch { /* fall through */ }
+    return [{
       id: `assistant-${Date.now()}`,
       role: 'assistant',
       type: 'intro',
       text: 'I am ready whenever you are. Tell me how you feel, what is triggering stress, or ask for your latest trends.',
       time: new Date().toISOString(),
-    },
-  ]);
+    }];
+  });
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [historyEntries, setHistoryEntries] = useState([]);
+  const [historyEntries, setHistoryEntries] = useState(() => {
+    try {
+      const raw = localStorage.getItem(getHistoryStoreKey());
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch { /* fall through */ }
+    return [];
+  });
   const [selectedEntryId, setSelectedEntryId] = useState('');
   const [insights, setInsights] = useState(buildLocalInsights([]));
   const [aiRuntime, setAiRuntime] = useState({ loading: true, available: false, llmActive: false, modelName: '' });
@@ -518,7 +541,7 @@ export default function Home() {
   const ensureSession = async () => {
     if (sessionIdRef.current) return sessionIdRef.current;
     try {
-      const res = await fetch('/api/sessions', {
+      const res = await fetch(`${API_BASE}/api/sessions`, {
         method: 'POST',
         headers: authHeaders({ 'Content-Type': 'application/json' }),
       });
@@ -536,7 +559,7 @@ export default function Home() {
 
   const loadLatestSessionId = async () => {
     try {
-      const response = await fetch('/api/sessions', { headers: authHeaders() });
+      const response = await fetch(`${API_BASE}/api/sessions`, { headers: authHeaders() });
       const data = await response.json().catch(() => ({}));
       const latestId = Array.isArray(data?.sessions) && data.sessions.length ? data.sessions[0]?._id : null;
       if (latestId) {
@@ -552,7 +575,7 @@ export default function Home() {
   const saveToMongo = async (sessionId, userText, botText, emotionLabel, stressLabel) => {
     if (!sessionId) return;
     try {
-      await fetch('/api/messages/save', {
+      await fetch(`${API_BASE}/api/messages/save`, {
         method: 'POST',
         headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ session_id: sessionId, user_text: userText, bot_text: botText, emotion_label: emotionLabel, stress_label: stressLabel }),
@@ -563,7 +586,7 @@ export default function Home() {
   const loadMessagesFromMongo = async (sessionId) => {
     if (!sessionId) return null;
     try {
-      const res = await fetch(`/api/messages/${sessionId}`, { headers: authHeaders() });
+      const res = await fetch(`${API_BASE}/api/messages/${sessionId}`, { headers: authHeaders() });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !Array.isArray(data?.messages) || !data.messages.length) return null;
       return data.messages.map((m) => ({
@@ -664,7 +687,7 @@ export default function Home() {
 
   const fetchInsights = async (seedHistory = historyEntries) => {
     try {
-      const response = await fetch('/api/checkin/insights', {
+      const response = await fetch(`${API_BASE}/api/checkin/insights`, {
         headers: authHeaders(),
       });
       const data = await response.json().catch(() => ({}));
@@ -677,7 +700,7 @@ export default function Home() {
 
   const loadHistory = async () => {
     try {
-      const response = await fetch('/api/checkin/history', {
+      const response = await fetch(`${API_BASE}/api/checkin/history`, {
         headers: authHeaders(),
       });
       const data = await response.json().catch(() => ({}));
@@ -688,19 +711,26 @@ export default function Home() {
           return bDate - aDate;
         })
         : [];
-      setHistoryEntries(normalized);
-      if (normalized[0]) setSelectedEntryId(String(normalized[0].id));
-      const nextInsights = await fetchInsights(normalized);
-      setInsights(nextInsights);
+      if (normalized.length > 0) {
+        setHistoryEntries(normalized);
+        localStorage.setItem(getHistoryStoreKey(), JSON.stringify(normalized));
+        if (normalized[0]) setSelectedEntryId(String(normalized[0].id));
+        const nextInsights = await fetchInsights(normalized);
+        setInsights(nextInsights);
+      } else {
+        // API returned empty — keep whatever the localStorage cache has
+        const nextInsights = await fetchInsights(historyEntries);
+        setInsights(nextInsights);
+      }
     } catch {
-      setHistoryEntries([]);
-      setInsights(buildLocalInsights([]));
+      // Network error — keep localStorage cache, don't wipe it
+      setInsights(buildLocalInsights(historyEntries));
     }
   };
 
   const loadRuntime = async () => {
     try {
-      const response = await fetch('/api/checkin/ml-health');
+      const response = await fetch(`${API_BASE}/api/checkin/ml-health`);
       const data = await response.json().catch(() => ({}));
       setAiRuntime({
         loading: false,
@@ -755,7 +785,7 @@ export default function Home() {
     if (!nextName) return;
 
     try {
-      const response = await fetch('/api/auth/profile', {
+      const response = await fetch(`${API_BASE}/api/auth/profile`, {
         method: 'PUT',
         headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
@@ -791,7 +821,7 @@ export default function Home() {
     localStorage.setItem('hfToken', nextHf);
 
     try {
-      const response = await fetch('/api/auth/keys', {
+      const response = await fetch(`${API_BASE}/api/auth/keys`, {
         method: 'PUT',
         headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
@@ -856,7 +886,7 @@ export default function Home() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/checkin/submit', {
+      const response = await fetch(`${API_BASE}/api/checkin/submit`, {
         method: 'POST',
         headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
@@ -870,6 +900,7 @@ export default function Home() {
       const result = normalizeEntry(data.result);
       const updatedHistory = [result, ...historyEntries.filter((item) => item.id !== result.id)].slice(0, 100);
       setHistoryEntries(updatedHistory);
+      localStorage.setItem(getHistoryStoreKey(), JSON.stringify(updatedHistory));
       setSelectedEntryId(String(result.id));
 
       const botText = result.ayasaResponse || 'Analysis completed.';
@@ -982,47 +1013,49 @@ export default function Home() {
   return (
     <div className={pageClassName}>
       <aside className="mainchat-sidebar">
+        {/* ── Header ── */}
         <div className="mainchat-sidebar-head">
           <Link to="/" className="mainchat-logo">
             <span className="material-symbols-rounded">diversity_1</span>
-            {!sidebarCollapsed && 'AYASA'}
+            {!sidebarCollapsed && <span className="mainchat-logo-text">AYASA</span>}
           </Link>
           <div className="mainchat-sidebar-head-actions">
             <button
+              type="button"
+              className="mainchat-new-chat-btn"
+              onClick={handleResetChat}
+              title="New conversation"
+              aria-label="New conversation"
+            >
+              <span className="material-symbols-rounded">edit_square</span>
+            </button>
+            <button
               className="mainchat-icon-btn"
               type="button"
-              onClick={() => {
-                setSidebarCollapsed((prev) => !prev);
-              }}
+              onClick={() => setSidebarCollapsed((prev) => !prev)}
               aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
               <span className="material-symbols-rounded">{sidebarCollapsed ? 'left_panel_open' : 'left_panel_close'}</span>
             </button>
-            {!sidebarCollapsed && <button className="mainchat-logout" onClick={handleLogout}>Logout</button>}
           </div>
         </div>
 
         {!sidebarCollapsed && (
-          <div className="mainchat-sidebar-scroll">
-            <section className="mainchat-sidebar-section">
-              <div className="mainchat-sidebar-section-head">
-                <h3>Session</h3>
-                <button type="button" className="mainchat-mini-link" onClick={handleResetChat}>New</button>
-              </div>
-              <p className="mainchat-sidebar-note mainchat-runtime-note">
+          <>
+            <div className="mainchat-sidebar-scroll">
+              {/* AI status pill */}
+              <div className="mainchat-status-row">
                 <span className={`mainchat-runtime-dot ${aiRuntime.available && aiRuntime.llmActive ? 'online' : 'offline'}`} />
-                <strong>{runtimeLabel}</strong>
-                {aiRuntime.modelName ? <span className="mainchat-runtime-model">{aiRuntime.modelName}</span> : null}
-              </p>
-            </section>
-
-            <section className="mainchat-sidebar-section">
-              <div className="mainchat-sidebar-section-head">
-                <h3>Conversation History</h3>
+                <span className="mainchat-status-label">{runtimeLabel}</span>
               </div>
+
+              {/* Recent check-ins */}
+              <div className="mainchat-section-label">Recent</div>
               <div className="mainchat-history-list">
-                {historyEntries.length === 0 && <p className="mainchat-empty">No sessions yet. Start chatting to build your timeline.</p>}
+                {historyEntries.length === 0 && (
+                  <p className="mainchat-empty">No sessions yet. Start chatting to build your timeline.</p>
+                )}
                 {historyEntries.map((entry) => (
                   <button
                     key={entry.id}
@@ -1033,32 +1066,29 @@ export default function Home() {
                       <span className={`mainchat-stress-badge ${stressClass(entry.stressLevel)}`}>{entry.stressLevel}</span>
                       <span className="mainchat-history-time">{formatTimestamp(entry.timestamp)}</span>
                     </div>
-                    <div className="mainchat-history-meta">
-                      <span>Emotion: {entry.emotion || 'unknown'}</span>
-                      <span>Confidence: {entry.confidence || 0}%</span>
-                    </div>
+                    <p className="mainchat-history-emotion">{entry.emotion || 'unknown'} · {entry.confidence || 0}%</p>
                     <p>{entry.userInput || 'Conversation entry'}</p>
                   </button>
                 ))}
               </div>
-            </section>
 
-            <section className="mainchat-sidebar-section">
+              {/* Analytics (collapsible) */}
               <div className="mainchat-collapsible">
                 <button
                   className="mainchat-collapse-toggle"
                   type="button"
                   onClick={() => setIsAnalyticsOpen((prev) => !prev)}
                 >
-                  <span>Stress Analytics</span>
-                  <span className={`material-symbols-rounded ${isAnalyticsOpen ? 'open' : ''}`}>expand_more</span>
+                  <span className="material-symbols-rounded">bar_chart</span>
+                  <span>Analytics</span>
+                  <span className={`material-symbols-rounded chevron ${isAnalyticsOpen ? 'open' : ''}`}>expand_more</span>
                 </button>
                 {isAnalyticsOpen && (
                   <div className="mainchat-detail-card">
                     <h4>Stress Snapshot</h4>
                     {selectedEntry ? (
                       <>
-                        <p><strong>Current Stress:</strong> {selectedEntry.stressLevel}</p>
+                        <p><strong>Stress:</strong> {selectedEntry.stressLevel}</p>
                         <p><strong>Emotion:</strong> {selectedEntry.emotion || 'unknown'}</p>
                         <p><strong>Confidence:</strong> {selectedEntry.confidence || 0}%</p>
                         <p><strong>Captured:</strong> {formatTimestamp(selectedEntry.timestamp)}</p>
@@ -1068,7 +1098,6 @@ export default function Home() {
                     )}
                     <div className="mainchat-emotion-box">
                       <h5>Emotion Distribution</h5>
-                      <p className="mainchat-exercise-hint">Confidence shown below is calibrated model certainty, not a diagnosis.</p>
                       {emotionDistribution.length === 0 && <p>No emotion data yet.</p>}
                       {emotionDistribution.map((item) => (
                         <div key={item.emotion} className="mainchat-emotion-row">
@@ -1082,86 +1111,61 @@ export default function Home() {
                         </div>
                       ))}
                     </div>
-
                     <div className="mainchat-trend-mini">
                       <h5>Stress Trend</h5>
                       {trendPoints.length < 2 ? (
-                        <p className="mainchat-exercise-hint">Need at least two check-ins to draw your trend.</p>
+                        <p className="mainchat-exercise-hint">Need at least two check-ins.</p>
                       ) : (
                         <>
-                          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="mainchat-trend-svg" role="img" aria-label="Stress trend over recent check-ins">
+                          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="mainchat-trend-svg" role="img" aria-label="Stress trend">
                             <line x1="0" y1="100" x2="100" y2="100" className="mainchat-trend-axis" />
                             <line x1="0" y1="50" x2="100" y2="50" className="mainchat-trend-axis" />
                             <line x1="0" y1="0" x2="100" y2="0" className="mainchat-trend-axis" />
                             <polyline points={trendPath} className="mainchat-trend-line" />
                           </svg>
                           <div className="mainchat-trend-scale">
-                            <span>High</span>
-                            <span>Moderate</span>
-                            <span>Low</span>
+                            <span>High</span><span>Moderate</span><span>Low</span>
                           </div>
                         </>
                       )}
                     </div>
+                    <div className="mainchat-insight-snippet">
+                      <span className="material-symbols-rounded">insights</span>
+                      <p>{insights.personalTrend.week}</p>
+                    </div>
                   </div>
                 )}
               </div>
-            </section>
 
-            <section className="mainchat-sidebar-section">
+              {/* Settings (collapsible) */}
               <div className="mainchat-collapsible">
                 <button
                   className="mainchat-collapse-toggle"
                   type="button"
                   onClick={() => setIsProfileOpen((prev) => !prev)}
                 >
-                  <span>User Profile</span>
-                  <span className={`material-symbols-rounded ${isProfileOpen ? 'open' : ''}`}>expand_more</span>
+                  <span className="material-symbols-rounded">settings</span>
+                  <span>Settings</span>
+                  <span className={`material-symbols-rounded chevron ${isProfileOpen ? 'open' : ''}`}>expand_more</span>
                 </button>
                 {isProfileOpen && (
                   <div className="mainchat-detail-card">
                     <h4>Profile</h4>
-                    <p><strong>Email:</strong> {userEmail}</p>
+                    <p className="mainchat-profile-email">{userEmail}</p>
                     <label className="mainchat-profile-label" htmlFor="profileNameInput">Display Name</label>
-                    <input
-                      id="profileNameInput"
-                      className="mainchat-profile-input"
-                      type="text"
-                      value={profileName}
-                      onChange={(e) => setProfileName(e.target.value)}
-                      placeholder="Enter your name"
-                    />
+                    <input id="profileNameInput" className="mainchat-profile-input" type="text" value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder="Enter your name" />
                     <div className="mainchat-profile-actions">
                       <button type="button" onClick={handleProfileSave}>Save</button>
                       {profileSaved && <span>{profileSaved}</span>}
                     </div>
-
                     <h4 className="mainchat-subtitle">API Keys</h4>
-                    <label className="mainchat-profile-label" htmlFor="llmApiKeyInput">LLM API Key (Groq)</label>
-                    <input
-                      id="llmApiKeyInput"
-                      className="mainchat-profile-input"
-                      type="password"
-                      value={llmApiKey}
-                      onChange={(e) => setLlmApiKey(e.target.value)}
-                      placeholder="Paste LLM key"
-                    />
+                    <label className="mainchat-profile-label" htmlFor="llmApiKeyInput">Groq API Key</label>
+                    <input id="llmApiKeyInput" className="mainchat-profile-input" type="password" value={llmApiKey} onChange={(e) => setLlmApiKey(e.target.value)} placeholder="Paste LLM key" />
                     <label className="mainchat-profile-label" htmlFor="hfTokenInput">HF Token</label>
-                    <input
-                      id="hfTokenInput"
-                      className="mainchat-profile-input"
-                      type="password"
-                      value={hfToken}
-                      onChange={(e) => setHfToken(e.target.value)}
-                      placeholder="Paste HF token"
-                    />
+                    <input id="hfTokenInput" className="mainchat-profile-input" type="password" value={hfToken} onChange={(e) => setHfToken(e.target.value)} placeholder="Paste HF token" />
                     <div className="mainchat-key-indicators">
-                      <span className={`mainchat-key-pill ${llmApiKey.trim() ? 'set' : 'unset'}`}>
-                        LLM: {llmApiKey.trim() ? 'Configured' : 'Missing'}
-                      </span>
-                      <span className={`mainchat-key-pill ${hfToken.trim() ? 'set' : 'unset'}`}>
-                        HF: {hfToken.trim() ? 'Configured' : 'Missing'}
-                      </span>
+                      <span className={`mainchat-key-pill ${llmApiKey.trim() ? 'set' : 'unset'}`}>LLM: {llmApiKey.trim() ? 'Set' : 'Missing'}</span>
+                      <span className={`mainchat-key-pill ${hfToken.trim() ? 'set' : 'unset'}`}>HF: {hfToken.trim() ? 'Set' : 'Missing'}</span>
                     </div>
                     <div className="mainchat-profile-actions">
                       <button type="button" onClick={handleSaveApiKeys}>Save Keys</button>
@@ -1170,15 +1174,30 @@ export default function Home() {
                   </div>
                 )}
               </div>
-            </section>
+            </div>
 
-            <section className="mainchat-sidebar-section">
-              <div className="mainchat-detail-card compact">
-                <h4>Insight Snapshot</h4>
-                <p>{insights.personalTrend.week}</p>
-              </div>
-            </section>
-          </div>
+            {/* ── Bottom user strip ── */}
+            <div className="mainchat-sidebar-foot">
+              <button
+                type="button"
+                className="mainchat-user-strip"
+                onClick={() => { setIsProfileOpen(true); }}
+                title="Open settings"
+              >
+                <span className="mainchat-sidebar-avatar">{displayName.charAt(0).toUpperCase()}</span>
+                <span className="mainchat-sidebar-username">{displayName}</span>
+              </button>
+              <button
+                type="button"
+                className="mainchat-logout-icon"
+                onClick={handleLogout}
+                title="Log out"
+                aria-label="Log out"
+              >
+                <span className="material-symbols-rounded">logout</span>
+              </button>
+            </div>
+          </>
         )}
       </aside>
 
@@ -1196,34 +1215,24 @@ export default function Home() {
               <span className="material-symbols-rounded">refresh</span>
               <span className="mainchat-reset-label">Reset chat</span>
             </button>
-            <button
-              type="button"
-              className="mainchat-user-avatar"
-              onClick={() => {
-                setIsProfileOpen(true);
-                setSidebarCollapsed(false);
-              }}
-              aria-label="Open user profile"
-              title="Open user profile"
-            >
-              {displayName.charAt(0).toUpperCase()}
-            </button>
           </div>
         </header>
 
         <section className={`mainchat-hero ${hasChatStarted ? 'dismissed' : ''}`}>
           <h1>{greeting}, {displayName}</h1>
           <h2>Can I help you with anything?</h2>
-          <p>Everything stays here in chat: analysis, resources, trends, and weekly summaries.</p>
+          <p>Choose a prompt below or share how you&rsquo;re feeling to start.</p>
           <div className="mainchat-prompt-grid">
-            {QUICK_ACTIONS.map((action) => (
+            {QUICK_ACTIONS.slice(0, 4).map((action) => (
               <button key={action.key} className="mainchat-prompt-chip" onClick={() => handlePrompt(action.key)}>
                 {action.label}
               </button>
             ))}
-            <button className="mainchat-prompt-chip" onClick={() => handlePrompt('menu')}>Reset menu</button>
           </div>
-          <div className="mainchat-runtime">{runtimeLabel}</div>
+          <button type="button" className="mainchat-refresh-prompts" onClick={() => handlePrompt('weekly')}>
+            <span className="material-symbols-rounded">autorenew</span>
+            Refresh prompts
+          </button>
         </section>
 
         <section className="mainchat-thread">
@@ -1254,17 +1263,6 @@ export default function Home() {
           <div ref={endRef} />
         </section>
 
-        <div className="mainchat-orb-dock" aria-hidden="true">
-          <Orb
-            hoverIntensity={0.3}
-            rotateOnHover={true}
-            paused={false}
-            hue={136}
-            forceHoverState={false}
-            backgroundColor="#ecf3ff"
-          />
-        </div>
-
         <form
           className="mainchat-composer"
           onSubmit={(e) => {
@@ -1273,19 +1271,34 @@ export default function Home() {
           }}
         >
           <div className="mainchat-input-row">
+            <div className="mainchat-orb-dock" aria-hidden="true">
+              <Orb
+                hoverIntensity={0.3}
+                rotateOnHover={true}
+                paused={false}
+                hue={0}
+                forceHoverState={false}
+                backgroundColor="#ecf3ff"
+              />
+            </div>
             <div className="mainchat-input-shell">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleComposerKeyDown}
                 placeholder="How can AYASA help you today?"
-                rows={1}
+                rows={5}
                 maxLength={2000}
               />
+              <div className="mainchat-composer-bar">
+                <span className="mainchat-composer-hint">Shift + Enter for new line</span>
+                <div className="mainchat-composer-actions">
+                  <button className="mainchat-send-btn" type="submit" disabled={loading || !input.trim()}>
+                    <span className="material-symbols-rounded">arrow_upward</span>
+                  </button>
+                </div>
+              </div>
             </div>
-            <button className="mainchat-send-btn external" type="submit" disabled={loading || !input.trim()}>
-              <span className="material-symbols-rounded">arrow_upward</span>
-            </button>
           </div>
         </form>
       </main>

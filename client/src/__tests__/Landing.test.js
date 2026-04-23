@@ -16,12 +16,12 @@ describe('Landing page', () => {
 
   test('renders AYASA brand name', () => {
     renderLanding();
-    expect(screen.getByText(/ayasa/i)).toBeInTheDocument();
+    // Multiple elements may contain "AYASA" — confirm at least one exists
+    expect(screen.getAllByText(/ayasa/i).length).toBeGreaterThan(0);
   });
 
   test('renders CTA link when not logged in', () => {
     renderLanding();
-    // Should have at least one link pointing to register or login
     const links = screen.getAllByRole('link');
     const hrefs = links.map((l) => l.getAttribute('href') || '');
     expect(hrefs.some((h) => h.includes('register') || h.includes('login'))).toBe(true);
