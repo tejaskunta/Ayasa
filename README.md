@@ -11,7 +11,7 @@ AYASA is a full-stack mental wellness platform with a conversational chat experi
 - Crisis keyword override path for immediate safety-first responses
 - Session/message persistence endpoints for multi-turn chat history
 - Check-in history and derived local/server insights (7-day, 30-day, patterns)
-- Render Blueprint deployment for ML backend, API server, and static client
+- Vercel + Cloud Run deployment for the static client and containerized services
 
 ## Architecture
 
@@ -25,7 +25,7 @@ AYASA is a full-stack mental wellness platform with a conversational chat experi
 - API Server: Node.js, Express, JWT, Mongoose
 - ML Service: FastAPI, Transformers, Torch, Groq SDK
 - Database: MongoDB (with graceful fallback behavior when unavailable)
-- Deployment: Render Blueprint (`render.yaml`)
+- Deployment: Vercel (`client/vercel.json`) + Cloud Run / Railway container services
 
 ## Repository Layout
 
@@ -153,26 +153,29 @@ cd ml-backend
 python -m pytest tests/ -v --tb=short
 ```
 
-## Render Deployment (Blueprint)
+## Deployment
 
-This repo includes `render.yaml` with three services:
+This repo now includes deployment metadata for a low-change split stack:
 
-1. `ayasa-ml-backend` (Python web service)
-2. `ayasa-server` (Node web service)
-3. `ayasa-client` (static site)
+1. `client/vercel.json` for the React app on Vercel
+2. `server/Dockerfile` for the Node API on Cloud Run or Railway
+3. `ml-backend/Dockerfile` for the Python ML service on Cloud Run
 
 Deploy steps:
 
 1. Push to GitHub `main`
-2. In Render, create from Blueprint using repository root `render.yaml`
-3. Set secret env vars in Render dashboard:
+2. Deploy `client/` to Vercel with `client/vercel.json` as the SPA rewrite rule
+3. Build and deploy `server/` as a container service
+4. Build and deploy `ml-backend/` as a container service
+5. Set secrets in each platform's environment manager:
    - `GROQ_API_KEY`
    - `HF_TOKEN`
    - `JWT_SECRET`
    - `MONGODB_URI`
    - `RUNTIME_SYNC_TOKEN`
+   - `REACT_APP_API_URL` for the client
 
-Note: static services in Render Blueprint should not define `region`; this repo is already configured correctly.
+The ML backend defaults to lightweight heuristic startup mode, which keeps deployments reliable on smaller instances.
 
 ## Security Notes
 
