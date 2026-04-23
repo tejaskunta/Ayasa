@@ -16,6 +16,8 @@ services:
         value: llama-3.1-8b-instant
       - key: HF_TOKEN
         sync: false
+      - key: ENABLE_HF_MODELS
+        value: false
       - key: RUNTIME_SYNC_TOKEN
         sync: false
       - key: PORT

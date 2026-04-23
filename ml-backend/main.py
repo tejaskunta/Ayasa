@@ -16,7 +16,6 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from llm import DEFAULT_GROQ_MODEL
 from pydantic import BaseModel, Field
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
 
 load_dotenv(dotenv_path=Path(__file__).with_name('.env'))
 
@@ -27,6 +26,7 @@ DEFAULT_HF_TOKEN = ""
 HF_TOKEN = (os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_TOKEN") or DEFAULT_HF_TOKEN).strip()
 DEFAULT_GROQ_API_KEY = (os.getenv("GROQ_API_KEY") or "").strip()
 RUNTIME_SYNC_TOKEN = (os.getenv("RUNTIME_SYNC_TOKEN") or "").strip()
+ENABLE_HEAVY_MODELS = (os.getenv("ENABLE_HF_MODELS") or "false").strip().lower() in {"1", "true", "yes", "on"}
 
 # In-memory runtime key registry keyed by user_id.
 USER_RUNTIME_KEYS: Dict[str, Dict[str, str]] = {}
@@ -180,37 +180,44 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-print("Loading emotion classifier...")
 emotion_classifier = None
-try:
-    emotion_classifier = pipeline(
-        "text-classification",
-        model="bhadresh-savani/distilbert-base-uncased-emotion",
-        top_k=None,
-    )
-except Exception as exc:  # noqa: BLE001
-    print(f"Emotion classifier load failed: {exc}")
 
 stress_classifier = None
-try:
-    print(f"Loading stress classifier from Hugging Face: {MODEL_NAME} ({MODEL_SUBFOLDER})")
-    model_kwargs = {
-        "subfolder": MODEL_SUBFOLDER,
-    }
-    if HF_TOKEN:
-        model_kwargs["token"] = HF_TOKEN
-    stress_model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, **model_kwargs)
-    stress_tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, **model_kwargs)
-    stress_classifier = pipeline(
-        "text-classification",
-        model=stress_model,
-        tokenizer=stress_tokenizer,
-        top_k=None,
-    )
-    print("Stress classifier loaded successfully.")
-except Exception as exc:  # noqa: BLE001
-    print(f"Stress model failed to load from Hugging Face: {exc}")
-    print("Falling back to heuristic stress inference.")
+
+if ENABLE_HEAVY_MODELS:
+    try:
+        from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
+
+        print("Loading emotion classifier...")
+        emotion_classifier = pipeline(
+            "text-classification",
+            model="bhadresh-savani/distilbert-base-uncased-emotion",
+            top_k=None,
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"Emotion classifier load failed: {exc}")
+
+    try:
+        print(f"Loading stress classifier from Hugging Face: {MODEL_NAME} ({MODEL_SUBFOLDER})")
+        model_kwargs = {
+            "subfolder": MODEL_SUBFOLDER,
+        }
+        if HF_TOKEN:
+            model_kwargs["token"] = HF_TOKEN
+        stress_model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, **model_kwargs)
+        stress_tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, **model_kwargs)
+        stress_classifier = pipeline(
+            "text-classification",
+            model=stress_model,
+            tokenizer=stress_tokenizer,
+            top_k=None,
+        )
+        print("Stress classifier loaded successfully.")
+    except Exception as exc:  # noqa: BLE001
+        print(f"Stress model failed to load from Hugging Face: {exc}")
+        print("Falling back to heuristic stress inference.")
+else:
+    print("Heavy HF model loading disabled; using heuristic inference only.")
 
 
 def normalize_distribution(raw_output: object) -> List[Dict[str, float]]:
