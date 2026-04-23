@@ -6,3 +6,4 @@ groq
 python-dotenv
 transformers==4.40.2
 torch==2.2.0+cpu
+numpy<2
