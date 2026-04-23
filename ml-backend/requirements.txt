@@ -1,11 +1,7 @@
 fastapi
 uvicorn
-transformers
-torch
-numpy
-scikit-learn
-joblib
 groq
 python-dotenv
-httpx
-pytest
+
+# Optional heavy ML stack for local experiments only.
+# Do not install this on Railway free tier builds.
