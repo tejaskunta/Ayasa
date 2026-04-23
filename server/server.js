@@ -23,7 +23,9 @@ module.exports = app;
 if (require.main === module) {
   const { connectDB } = require('./config/db');
   const PORT = process.env.PORT || 5000;
-  connectDB().then(() => {
-    app.listen(PORT, () => console.log(`Ayasa server running on http://localhost:${PORT}`));
+  // Bind immediately so Railway can route traffic; DB connects in background.
+  app.listen(PORT, () => {
+    console.log(`Ayasa server running on port ${PORT}`);
+    connectDB();
   });
 }
