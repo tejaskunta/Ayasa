@@ -14,6 +14,7 @@ from chatbot import chatbot_reply
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from llm import DEFAULT_GROQ_MODEL
 from pydantic import BaseModel, Field
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
 
@@ -510,6 +511,7 @@ async def health():
         "runtime_key_sync_enabled": bool(RUNTIME_SYNC_TOKEN),
         "runtime_keys_count": len(USER_RUNTIME_KEYS),
         "model_name": MODEL_NAME,
+        "llm_model": DEFAULT_GROQ_MODEL,
     }
 
 

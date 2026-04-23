@@ -334,6 +334,7 @@ exports.getMLHealth = async (req, res) => {
     available: health.available,
     llmActive,
     geminiActive: llmActive,
+    modelName: health.payload?.llm_model || health.payload?.model_name || '',
     stressModelLoaded: Boolean(health.payload?.stress_model_loaded),
     emotionModelLoaded: Boolean(health.payload?.emotion_model_loaded),
     timestamp: new Date().toISOString(),

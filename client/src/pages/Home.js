@@ -18,6 +18,11 @@ function getMessageStoreKey() {
   return `ayasa_chat_history:${email}`;
 }
 
+function getSessionStoreKey() {
+  const email = getUserEmail();
+  return `ayasa_session_id:${email}`;
+}
+
 function getToken() {
   return localStorage.getItem('token') || '';
 }
@@ -59,6 +64,20 @@ function normalizeEntry(entry, index = 0) {
     resources: Array.isArray(entry.resources) ? entry.resources : [],
     timestamp: entry.timestamp || new Date().toISOString(),
   };
+}
+
+function buildTrendPoints(entries = [], limit = 10) {
+  const sorted = entries
+    .map((item) => ({ ...item, parsed: safeDate(item.timestamp) }))
+    .filter((item) => item.parsed)
+    .sort((a, b) => a.parsed - b.parsed)
+    .slice(-limit);
+
+  return sorted.map((item, index) => ({
+    x: index,
+    value: SCORE_MAP[normalizeStressLevel(item.stressLevel)] || 2,
+    label: item.parsed.toLocaleDateString([], { month: 'short', day: 'numeric' }),
+  }));
 }
 
 const SCORE_MAP = {
@@ -183,11 +202,6 @@ function stressClass(level) {
   return level === 'High' ? 'high' : level === 'Low' ? 'low' : 'moderate';
 }
 
-function pickRandom(items = []) {
-  if (!items.length) return null;
-  return items[Math.floor(Math.random() * items.length)];
-}
-
 // One best exercise per emotion — deterministic, not random.
 // anger    → box breathing (slows physiological arousal)
 // fear     → grounding    (5-4-3-2-1 breaks anxiety loops, anchors to present)
@@ -260,9 +274,17 @@ function GroundingExercise() {
   );
 }
 
-function GratitudeExercise() {
+function GratitudeExercise({ onComplete }) {
   const [items, setItems] = useState([]);
   const [draft, setDraft] = useState('');
+  const [completed, setCompleted] = useState(false);
+
+  useEffect(() => {
+    if (!completed && items.length >= 3) {
+      setCompleted(true);
+      if (typeof onComplete === 'function') onComplete();
+    }
+  }, [completed, items.length, onComplete]);
 
   return (
     <div className="mainchat-exercise-card">
@@ -287,6 +309,7 @@ function GratitudeExercise() {
           <span key={`${item}-${i}`} className="mainchat-chip">{item}</span>
         ))}
       </div>
+      <p className="mainchat-exercise-hint">Add three wins to complete this exercise.</p>
     </div>
   );
 }
@@ -296,6 +319,7 @@ function BreathingCircle() {
     <div className="mainchat-exercise-card">
       <h5>Breathing Circle</h5>
       <div className="mainchat-breath-circle" />
+      <p className="mainchat-exercise-hint">Inhale as the circle expands, exhale as it contracts. Continue for 60-90 seconds.</p>
     </div>
   );
 }
@@ -346,6 +370,14 @@ function BoxBreathing() {
     <div className="mainchat-exercise-card">
       <h5>Box Breathing</h5>
       <div className="mainchat-box-breath" />
+      <p className="mainchat-exercise-hint">Follow a 4-4-4-4 rhythm to calm your nervous system:</p>
+      <div className="mainchat-chip-wrap">
+        <span className="mainchat-chip">Inhale 4s</span>
+        <span className="mainchat-chip">Hold 4s</span>
+        <span className="mainchat-chip">Exhale 4s</span>
+        <span className="mainchat-chip">Hold 4s</span>
+      </div>
+      <p className="mainchat-exercise-hint">Repeat this box cycle 4 times. If dizzy, return to a normal breathing pace.</p>
     </div>
   );
 }
@@ -374,13 +406,20 @@ function OneStep() {
   );
 }
 
-function ExercisePanel({ exerciseKey, stressLevel }) {
+function ExercisePanel({ exerciseKey, stressLevel, onComplete }) {
   const normalized = normalizeStressLevel(stressLevel);
+  const [completed, setCompleted] = useState(false);
+
+  const completeExercise = () => {
+    if (completed) return;
+    setCompleted(true);
+    if (typeof onComplete === 'function') onComplete(exerciseKey);
+  };
 
   return (
     <div className={`mainchat-exercise-panel ${normalized.toLowerCase()}`}>
       {exerciseKey === 'grounding' && <GroundingExercise />}
-      {exerciseKey === 'gratitude' && <GratitudeExercise />}
+      {exerciseKey === 'gratitude' && <GratitudeExercise onComplete={completeExercise} />}
       {exerciseKey === 'breathing' && <BreathingCircle />}
       {exerciseKey === 'thoughtDump' && <ThoughtDump />}
       {exerciseKey === 'reframe' && <Reframe />}
@@ -388,6 +427,16 @@ function ExercisePanel({ exerciseKey, stressLevel }) {
       {exerciseKey === 'boxBreathing' && <BoxBreathing />}
       {exerciseKey === 'safeLoop' && <SafeLoop />}
       {exerciseKey === 'oneStep' && <OneStep />}
+      <div className="mainchat-exercise-actions">
+        <button
+          type="button"
+          className="mainchat-mini-btn"
+          onClick={completeExercise}
+          disabled={completed}
+        >
+          {completed ? 'Completed' : 'Mark complete'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -418,7 +467,7 @@ export default function Home() {
   const [historyEntries, setHistoryEntries] = useState([]);
   const [selectedEntryId, setSelectedEntryId] = useState('');
   const [insights, setInsights] = useState(buildLocalInsights([]));
-  const [aiRuntime, setAiRuntime] = useState({ loading: true, available: false, llmActive: false });
+  const [aiRuntime, setAiRuntime] = useState({ loading: true, available: false, llmActive: false, modelName: '' });
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [profileName, setProfileName] = useState(() => getUser().fullName || '');
@@ -431,7 +480,40 @@ export default function Home() {
   const exerciseOfferShownRef = useRef(false);
   const endRef = useRef(null);
   const lastWarningRef = useRef('');
-  const sessionIdRef = useRef(localStorage.getItem('ayasa_session_id') || null);
+  const sessionIdRef = useRef(localStorage.getItem(getSessionStoreKey()) || null);
+
+  const mergeHydratedMessages = (mongoMessages, localMessages) => {
+    const combined = [];
+    const seen = new Set();
+    const lists = [Array.isArray(mongoMessages) ? mongoMessages : [], Array.isArray(localMessages) ? localMessages : []];
+
+    for (const list of lists) {
+      for (const item of list) {
+        const signature = `${item.role || 'assistant'}::${String(item.text || '').trim()}::${new Date(item.time || Date.now()).getTime()}`;
+        if (seen.has(signature)) continue;
+        seen.add(signature);
+        combined.push(item);
+      }
+    }
+
+    const sorted = combined
+      .filter((item) => String(item.text || '').trim())
+      .sort((a, b) => {
+        const aTime = safeDate(a.time)?.getTime() || 0;
+        const bTime = safeDate(b.time)?.getTime() || 0;
+        return aTime - bTime;
+      });
+
+    return sorted.length
+      ? sorted
+      : [{
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        type: 'intro',
+        text: 'I am ready whenever you are. Tell me how you feel, what is triggering stress, or ask for your latest trends.',
+        time: new Date().toISOString(),
+      }];
+  };
 
   const ensureSession = async () => {
     if (sessionIdRef.current) return sessionIdRef.current;
@@ -444,9 +526,24 @@ export default function Home() {
       const id = data?.session?._id || null;
       if (id) {
         sessionIdRef.current = id;
-        localStorage.setItem('ayasa_session_id', id);
+        localStorage.setItem(getSessionStoreKey(), id);
       }
       return id;
+    } catch {
+      return null;
+    }
+  };
+
+  const loadLatestSessionId = async () => {
+    try {
+      const response = await fetch('/api/sessions', { headers: authHeaders() });
+      const data = await response.json().catch(() => ({}));
+      const latestId = Array.isArray(data?.sessions) && data.sessions.length ? data.sessions[0]?._id : null;
+      if (latestId) {
+        sessionIdRef.current = latestId;
+        localStorage.setItem(getSessionStoreKey(), latestId);
+      }
+      return latestId;
     } catch {
       return null;
     }
@@ -494,7 +591,7 @@ export default function Home() {
     localStorage.setItem(getMessageStoreKey(), JSON.stringify([initMsg]));
     // Start a fresh MongoDB session next time
     sessionIdRef.current = null;
-    localStorage.removeItem('ayasa_session_id');
+    localStorage.removeItem(getSessionStoreKey());
     setPendingExercise(null);
     exerciseOfferShownRef.current = false;
     lastWarningRef.current = '';
@@ -536,6 +633,19 @@ export default function Home() {
       .sort((a, b) => b.percent - a.percent)
       .slice(0, 5);
   }, [historyEntries]);
+
+  const trendPoints = useMemo(() => buildTrendPoints(historyEntries, 12), [historyEntries]);
+
+  const trendPath = useMemo(() => {
+    if (trendPoints.length < 2) return '';
+    return trendPoints
+      .map((point, index) => {
+        const x = (index / (trendPoints.length - 1)) * 100;
+        const y = ((3 - point.value) / 2) * 100;
+        return `${x},${y}`;
+      })
+      .join(' ');
+  }, [trendPoints]);
 
   const pushMessage = (message) => {
     setMessages((prev) => {
@@ -596,9 +706,10 @@ export default function Home() {
         loading: false,
         available: Boolean(data.available),
         llmActive: Boolean(data.llmActive ?? data.geminiActive),
+        modelName: String(data.modelName || ''),
       });
     } catch {
-      setAiRuntime({ loading: false, available: false, llmActive: false });
+      setAiRuntime({ loading: false, available: false, llmActive: false, modelName: '' });
     }
   };
 
@@ -608,16 +719,17 @@ export default function Home() {
       return undefined;
     }
 
-    // Try MongoDB first, fall back to localStorage
+    // Hydrate from backend first and merge with local cache to avoid refresh loss.
     (async () => {
-      const mongoMessages = await loadMessagesFromMongo(sessionIdRef.current);
-      if (mongoMessages && mongoMessages.length > 1) {
-        setMessages(mongoMessages);
-        localStorage.setItem(getMessageStoreKey(), JSON.stringify(mongoMessages));
-      } else {
-        const storedMessages = loadStoredMessages();
-        if (storedMessages) setMessages(storedMessages);
+      const localMessages = loadStoredMessages();
+      if (!sessionIdRef.current) {
+        await loadLatestSessionId();
       }
+
+      const mongoMessages = await loadMessagesFromMongo(sessionIdRef.current);
+      const hydrated = mergeHydratedMessages(mongoMessages, localMessages);
+      setMessages(hydrated);
+      localStorage.setItem(getMessageStoreKey(), JSON.stringify(hydrated));
     })();
 
     loadHistory();
@@ -632,6 +744,7 @@ export default function Home() {
   }, [messages, loading]);
 
   const handleLogout = () => {
+    localStorage.removeItem(getSessionStoreKey());
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     navigate('/login');
@@ -852,6 +965,15 @@ export default function Home() {
     }
   };
 
+  const handleExerciseCompleted = (exerciseKey) => {
+    const exerciseName = EXERCISE_NAMES[exerciseKey] || 'this exercise';
+    pushMessage({
+      role: 'assistant',
+      type: 'exercise-followup',
+      text: `Nice work completing ${exerciseName}. How do you feel now, and did you notice any shift in your body or thoughts?`,
+    });
+  };
+
   const pageClassName = [
     'mainchat-page',
     sidebarCollapsed ? 'sidebar-collapsed' : '',
@@ -883,135 +1005,179 @@ export default function Home() {
 
         {!sidebarCollapsed && (
           <div className="mainchat-sidebar-scroll">
-            <div className="mainchat-history-title">Conversation History</div>
-            <div className="mainchat-history-list">
-              {historyEntries.length === 0 && <p className="mainchat-empty">No sessions yet. Start chatting to build your timeline.</p>}
-              {historyEntries.map((entry) => (
+            <section className="mainchat-sidebar-section">
+              <div className="mainchat-sidebar-section-head">
+                <h3>Session</h3>
+                <button type="button" className="mainchat-mini-link" onClick={handleResetChat}>New</button>
+              </div>
+              <p className="mainchat-sidebar-note mainchat-runtime-note">
+                <span className={`mainchat-runtime-dot ${aiRuntime.available && aiRuntime.llmActive ? 'online' : 'offline'}`} />
+                <strong>{runtimeLabel}</strong>
+                {aiRuntime.modelName ? <span className="mainchat-runtime-model">{aiRuntime.modelName}</span> : null}
+              </p>
+            </section>
+
+            <section className="mainchat-sidebar-section">
+              <div className="mainchat-sidebar-section-head">
+                <h3>Conversation History</h3>
+              </div>
+              <div className="mainchat-history-list">
+                {historyEntries.length === 0 && <p className="mainchat-empty">No sessions yet. Start chatting to build your timeline.</p>}
+                {historyEntries.map((entry) => (
+                  <button
+                    key={entry.id}
+                    className={`mainchat-history-item${String(selectedEntryId) === String(entry.id) ? ' active' : ''}`}
+                    onClick={() => setSelectedEntryId(String(entry.id))}
+                  >
+                    <div className="mainchat-history-item-head">
+                      <span className={`mainchat-stress-badge ${stressClass(entry.stressLevel)}`}>{entry.stressLevel}</span>
+                      <span className="mainchat-history-time">{formatTimestamp(entry.timestamp)}</span>
+                    </div>
+                    <div className="mainchat-history-meta">
+                      <span>Emotion: {entry.emotion || 'unknown'}</span>
+                      <span>Confidence: {entry.confidence || 0}%</span>
+                    </div>
+                    <p>{entry.userInput || 'Conversation entry'}</p>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="mainchat-sidebar-section">
+              <div className="mainchat-collapsible">
                 <button
-                  key={entry.id}
-                  className={`mainchat-history-item${String(selectedEntryId) === String(entry.id) ? ' active' : ''}`}
-                  onClick={() => setSelectedEntryId(String(entry.id))}
+                  className="mainchat-collapse-toggle"
+                  type="button"
+                  onClick={() => setIsAnalyticsOpen((prev) => !prev)}
                 >
-                  <div className="mainchat-history-item-head">
-                    <span className={`mainchat-stress-badge ${stressClass(entry.stressLevel)}`}>{entry.stressLevel}</span>
-                    <span className="mainchat-history-time">{formatTimestamp(entry.timestamp)}</span>
-                  </div>
-                  <div className="mainchat-history-meta">
-                    <span>Emotion: {entry.emotion || 'unknown'}</span>
-                    <span>Confidence: {entry.confidence || 0}%</span>
-                  </div>
-                  <p>{entry.userInput || 'Conversation entry'}</p>
+                  <span>Stress Analytics</span>
+                  <span className={`material-symbols-rounded ${isAnalyticsOpen ? 'open' : ''}`}>expand_more</span>
                 </button>
-              ))}
-            </div>
-
-            <div className="mainchat-collapsible">
-              <button
-                className="mainchat-collapse-toggle"
-                type="button"
-                onClick={() => setIsAnalyticsOpen((prev) => !prev)}
-              >
-                <span>Stress Analytics</span>
-                <span className={`material-symbols-rounded ${isAnalyticsOpen ? 'open' : ''}`}>expand_more</span>
-              </button>
-              {isAnalyticsOpen && (
-                <div className="mainchat-detail-card">
-                  <h4>Stress Snapshot</h4>
-                  {selectedEntry ? (
-                    <>
-                      <p><strong>Current Stress:</strong> {selectedEntry.stressLevel}</p>
-                      <p><strong>Emotion:</strong> {selectedEntry.emotion || 'unknown'}</p>
-                      <p><strong>Confidence:</strong> {selectedEntry.confidence || 0}%</p>
-                      <p><strong>Captured:</strong> {formatTimestamp(selectedEntry.timestamp)}</p>
-                    </>
-                  ) : (
-                    <p>No selected session.</p>
-                  )}
-                  <div className="mainchat-emotion-box">
-                    <h5>Emotion Distribution</h5>
-                    {emotionDistribution.length === 0 && <p>No emotion data yet.</p>}
-                    {emotionDistribution.map((item) => (
-                      <div key={item.emotion} className="mainchat-emotion-row">
-                        <div className="mainchat-emotion-head">
-                          <span>{item.emotion}</span>
-                          <strong>{item.percent}%</strong>
+                {isAnalyticsOpen && (
+                  <div className="mainchat-detail-card">
+                    <h4>Stress Snapshot</h4>
+                    {selectedEntry ? (
+                      <>
+                        <p><strong>Current Stress:</strong> {selectedEntry.stressLevel}</p>
+                        <p><strong>Emotion:</strong> {selectedEntry.emotion || 'unknown'}</p>
+                        <p><strong>Confidence:</strong> {selectedEntry.confidence || 0}%</p>
+                        <p><strong>Captured:</strong> {formatTimestamp(selectedEntry.timestamp)}</p>
+                      </>
+                    ) : (
+                      <p>No selected session.</p>
+                    )}
+                    <div className="mainchat-emotion-box">
+                      <h5>Emotion Distribution</h5>
+                      <p className="mainchat-exercise-hint">Confidence shown below is calibrated model certainty, not a diagnosis.</p>
+                      {emotionDistribution.length === 0 && <p>No emotion data yet.</p>}
+                      {emotionDistribution.map((item) => (
+                        <div key={item.emotion} className="mainchat-emotion-row">
+                          <div className="mainchat-emotion-head">
+                            <span>{item.emotion}</span>
+                            <strong>{item.percent}%</strong>
+                          </div>
+                          <div className="mainchat-emotion-bar">
+                            <span style={{ width: `${item.percent}%` }} />
+                          </div>
                         </div>
-                        <div className="mainchat-emotion-bar">
-                          <span style={{ width: `${item.percent}%` }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+                      ))}
+                    </div>
 
-            <div className="mainchat-collapsible">
-              <button
-                className="mainchat-collapse-toggle"
-                type="button"
-                onClick={() => setIsProfileOpen((prev) => !prev)}
-              >
-                <span>User Profile</span>
-                <span className={`material-symbols-rounded ${isProfileOpen ? 'open' : ''}`}>expand_more</span>
-              </button>
-              {isProfileOpen && (
-                <div className="mainchat-detail-card">
-                  <h4>Profile</h4>
-                  <p><strong>Email:</strong> {userEmail}</p>
-                  <label className="mainchat-profile-label" htmlFor="profileNameInput">Display Name</label>
-                  <input
-                    id="profileNameInput"
-                    className="mainchat-profile-input"
-                    type="text"
-                    value={profileName}
-                    onChange={(e) => setProfileName(e.target.value)}
-                    placeholder="Enter your name"
-                  />
-                  <div className="mainchat-profile-actions">
-                    <button type="button" onClick={handleProfileSave}>Save</button>
-                    {profileSaved && <span>{profileSaved}</span>}
+                    <div className="mainchat-trend-mini">
+                      <h5>Stress Trend</h5>
+                      {trendPoints.length < 2 ? (
+                        <p className="mainchat-exercise-hint">Need at least two check-ins to draw your trend.</p>
+                      ) : (
+                        <>
+                          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="mainchat-trend-svg" role="img" aria-label="Stress trend over recent check-ins">
+                            <line x1="0" y1="100" x2="100" y2="100" className="mainchat-trend-axis" />
+                            <line x1="0" y1="50" x2="100" y2="50" className="mainchat-trend-axis" />
+                            <line x1="0" y1="0" x2="100" y2="0" className="mainchat-trend-axis" />
+                            <polyline points={trendPath} className="mainchat-trend-line" />
+                          </svg>
+                          <div className="mainchat-trend-scale">
+                            <span>High</span>
+                            <span>Moderate</span>
+                            <span>Low</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
+                )}
+              </div>
+            </section>
 
-                  <h4 className="mainchat-subtitle">API Keys</h4>
-                  <label className="mainchat-profile-label" htmlFor="llmApiKeyInput">LLM API Key (Groq)</label>
-                  <input
-                    id="llmApiKeyInput"
-                    className="mainchat-profile-input"
-                    type="password"
-                    value={llmApiKey}
-                    onChange={(e) => setLlmApiKey(e.target.value)}
-                    placeholder="Paste LLM key"
-                  />
-                  <label className="mainchat-profile-label" htmlFor="hfTokenInput">HF Token</label>
-                  <input
-                    id="hfTokenInput"
-                    className="mainchat-profile-input"
-                    type="password"
-                    value={hfToken}
-                    onChange={(e) => setHfToken(e.target.value)}
-                    placeholder="Paste HF token"
-                  />
-                  <div className="mainchat-key-indicators">
-                    <span className={`mainchat-key-pill ${llmApiKey.trim() ? 'set' : 'unset'}`}>
-                      LLM: {llmApiKey.trim() ? 'Configured' : 'Missing'}
-                    </span>
-                    <span className={`mainchat-key-pill ${hfToken.trim() ? 'set' : 'unset'}`}>
-                      HF: {hfToken.trim() ? 'Configured' : 'Missing'}
-                    </span>
-                  </div>
-                  <div className="mainchat-profile-actions">
-                    <button type="button" onClick={handleSaveApiKeys}>Save Keys</button>
-                    {keysSaved && <span>{keysSaved}</span>}
-                  </div>
-                </div>
-              )}
-            </div>
+            <section className="mainchat-sidebar-section">
+              <div className="mainchat-collapsible">
+                <button
+                  className="mainchat-collapse-toggle"
+                  type="button"
+                  onClick={() => setIsProfileOpen((prev) => !prev)}
+                >
+                  <span>User Profile</span>
+                  <span className={`material-symbols-rounded ${isProfileOpen ? 'open' : ''}`}>expand_more</span>
+                </button>
+                {isProfileOpen && (
+                  <div className="mainchat-detail-card">
+                    <h4>Profile</h4>
+                    <p><strong>Email:</strong> {userEmail}</p>
+                    <label className="mainchat-profile-label" htmlFor="profileNameInput">Display Name</label>
+                    <input
+                      id="profileNameInput"
+                      className="mainchat-profile-input"
+                      type="text"
+                      value={profileName}
+                      onChange={(e) => setProfileName(e.target.value)}
+                      placeholder="Enter your name"
+                    />
+                    <div className="mainchat-profile-actions">
+                      <button type="button" onClick={handleProfileSave}>Save</button>
+                      {profileSaved && <span>{profileSaved}</span>}
+                    </div>
 
-            <div className="mainchat-detail-card compact">
-              <h4>Insight Snapshot</h4>
-              <p>{insights.personalTrend.week}</p>
-            </div>
+                    <h4 className="mainchat-subtitle">API Keys</h4>
+                    <label className="mainchat-profile-label" htmlFor="llmApiKeyInput">LLM API Key (Groq)</label>
+                    <input
+                      id="llmApiKeyInput"
+                      className="mainchat-profile-input"
+                      type="password"
+                      value={llmApiKey}
+                      onChange={(e) => setLlmApiKey(e.target.value)}
+                      placeholder="Paste LLM key"
+                    />
+                    <label className="mainchat-profile-label" htmlFor="hfTokenInput">HF Token</label>
+                    <input
+                      id="hfTokenInput"
+                      className="mainchat-profile-input"
+                      type="password"
+                      value={hfToken}
+                      onChange={(e) => setHfToken(e.target.value)}
+                      placeholder="Paste HF token"
+                    />
+                    <div className="mainchat-key-indicators">
+                      <span className={`mainchat-key-pill ${llmApiKey.trim() ? 'set' : 'unset'}`}>
+                        LLM: {llmApiKey.trim() ? 'Configured' : 'Missing'}
+                      </span>
+                      <span className={`mainchat-key-pill ${hfToken.trim() ? 'set' : 'unset'}`}>
+                        HF: {hfToken.trim() ? 'Configured' : 'Missing'}
+                      </span>
+                    </div>
+                    <div className="mainchat-profile-actions">
+                      <button type="button" onClick={handleSaveApiKeys}>Save Keys</button>
+                      {keysSaved && <span>{keysSaved}</span>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="mainchat-sidebar-section">
+              <div className="mainchat-detail-card compact">
+                <h4>Insight Snapshot</h4>
+                <p>{insights.personalTrend.week}</p>
+              </div>
+            </section>
           </div>
         )}
       </aside>
@@ -1069,6 +1235,7 @@ export default function Home() {
                   <ExercisePanel
                     exerciseKey={message.exerciseKey}
                     stressLevel={message.exerciseStress}
+                    onComplete={handleExerciseCompleted}
                   />
                 )}
                 {message.meta && (
