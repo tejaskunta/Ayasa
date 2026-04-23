@@ -7,9 +7,9 @@ ARG REACT_APP_API_URL
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
 RUN npm run build
 
-FROM node:20-slim
-WORKDIR /app
-RUN npm install -g serve
-COPY --from=builder /app/build ./build
-EXPOSE 3000
-CMD ["sh", "-c", "serve -s build -l ${PORT:-3000}"]
+FROM nginx:alpine
+COPY --from=builder /app/build /usr/share/nginx/html
+RUN printf 'server {\n  listen 80;\n  location / {\n    root /usr/share/nginx/html;\n    index index.html;\n    try_files $uri $uri/ /index.html;\n  }\n}\n' \
+    > /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
