@@ -1,7 +1,8 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 fastapi
-uvicorn
+uvicorn[standard]
 groq
 python-dotenv
-
-# Optional heavy ML stack for local experiments only.
-# Do not install this on Railway free tier builds.
+transformers==4.40.2
+torch==2.2.0+cpu

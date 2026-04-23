@@ -5,3 +5,13 @@ __pycache__
 .pytest_cache
 tests
 .git
+venv/
+.venv/
+anaconda/
+*.ipynb
+outputs/
+stress_model/
+Complete_StressModel/
+*.safetensors
+*.pt
+*.pth
