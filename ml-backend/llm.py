@@ -59,8 +59,10 @@ def generate_response(
     prompt = _build_structured_prompt(user_input, stress, emotions, strategy)
     resolved_key = (api_key or "").strip() or os.getenv("GROQ_API_KEY", "").strip()
     if not resolved_key:
+        print("[Groq] ERROR: no API key resolved — check GROQ_API_KEY env var")
         return None, "Missing GROQ_API_KEY"
 
+    print(f"[Groq] calling model={DEFAULT_GROQ_MODEL} key_len={len(resolved_key)}")
     try:
         client = Groq(api_key=resolved_key)
         chat = client.chat.completions.create(
@@ -83,4 +85,5 @@ def generate_response(
             return None, "Groq returned empty response"
         return content, None
     except Exception as exc:  # noqa: BLE001
+        print(f"[Groq] EXCEPTION: {type(exc).__name__}: {exc}")
         return None, str(exc)
