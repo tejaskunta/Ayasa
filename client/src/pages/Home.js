@@ -1349,6 +1349,10 @@ export default function Home() {
             submitMessage(input);
           }}
         >
+          <div className="mainchat-composer-row">
+          <div className="mainchat-orb-dock" aria-hidden="true">
+            <Orb hue={0} paused={false} />
+          </div>
           <div className="mainchat-input-shell">
             <textarea
               value={input}
@@ -1366,6 +1370,7 @@ export default function Home() {
                 </button>
               </div>
             </div>
+          </div>
           </div>
         </form>
       </main>

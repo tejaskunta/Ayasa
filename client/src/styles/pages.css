@@ -5569,6 +5569,29 @@ body {
   opacity: 1;
 }
 
+/* Composer row: orb beside the input */
+.mainchat-composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.mainchat-composer-row .mainchat-input-shell {
+  flex: 1;
+}
+
+.mainchat-composer-row .mainchat-orb-dock {
+  width: 46px;
+  height: 46px;
+  margin: 0 0 0.15rem 0;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  overflow: hidden;
+  clip-path: circle(50%);
+  box-shadow: none;
+  filter: none;
+}
+
 /* Intro message: preserve newlines from the guide text */
 .mainchat-msg.intro .mainchat-msg-bubble p {
   white-space: pre-line;

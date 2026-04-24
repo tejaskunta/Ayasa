@@ -4,6 +4,6 @@ fastapi
 uvicorn[standard]
 groq
 python-dotenv
-transformers==4.40.2
-torch==2.2.0+cpu
-numpy<2
+transformers==4.52.3
+torch==2.11.0+cpu
+numpy>=2.2.0
