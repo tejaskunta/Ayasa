@@ -295,7 +295,7 @@ exports.submitCheckIn = async (req, res) => {
     }
 
     recentCheckIns.set(dedupKey, { createdAt: Date.now(), result: checkInData });
-    res.json({ message: 'Check-in submitted successfully', result: checkInData });
+    res.json({ message: 'Check-in submitted successfully', result: { ...checkInData, emotionHighlights: ml.emotionHighlights || [] } });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

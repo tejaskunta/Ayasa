@@ -32,6 +32,7 @@ function normalizePredictPayload(payload = {}) {
     directScoreQuery: payload.directScoreQuery,
     llmUsed: Boolean(payload.llmUsed ?? payload.groqUsed ?? payload.geminiUsed),
     llmError: payload.llmError || payload.groqError || payload.geminiError || null,
+    emotionHighlights: Array.isArray(payload.emotionHighlights) ? payload.emotionHighlights : [],
   };
 }
 

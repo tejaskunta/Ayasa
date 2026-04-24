@@ -44,25 +44,27 @@ DIRECT_SCORE_TRIGGERS = {
 }
 
 DISTRESS_KEYWORDS = {
-    "anxious",
-    "anxiety",
-    "panic",
-    "overwhelmed",
-    "hopeless",
-    "hurt",
-    "cannot cope",
-    "can't cope",
-    "self-harm",
-    "suicide",
-    "kill myself",
-    "want to die",
-    "end my life",
-    "harm myself",
-    "worthless",
-    "depressed",
-    "fear",
-    "angry",
-    "sad",
+    "anxious", "anxiety", "panic",
+    "overwhelm",                    # covers overwhelmed + overwhelming
+    "hopeless", "hurt",
+    "cannot cope", "can't cope",
+    "self-harm", "suicide",
+    "kill myself", "want to die", "end my life", "harm myself",
+    "worthless", "depressed",
+    "fear", "angry", "sad",
+    "yell", "scream",               # boss yelling, screaming
+    "broke up", "breakup",          # relationship loss
+    "embarrass",                    # covers embarrassed/embarrassing
+    "struggling", "struggle",
+    "terrible", "horrible", "awful",
+    "crying", "cried",
+    "frustrated", "frustrat",
+    "heartbroken", "lonely",
+    "miserable", "exhausted",
+    "feeling down", "feel down",
+    "feeling low", "feel low",
+    "feeling bad", "feel bad",
+    "feeling sad", "feel sad",
 }
 
 CALM_KEYWORDS = {
@@ -114,6 +116,70 @@ FALLBACK_REPLY = {
     "High": "This sounds intense. Let us take one grounding breath together. What feels most overwhelming right now?",
 }
 
+# Map of emotionally significant words/phrases → (emotion, intensity)
+# Only strong/medium words that clearly signal an emotion state.
+EMOTION_WORD_MAP: Dict[str, Tuple[str, str]] = {
+    # sadness / loss
+    "heavy": ("sadness", "medium"),
+    "draining": ("sadness", "medium"),
+    "drained": ("sadness", "medium"),
+    "loss": ("sadness", "high"),
+    "lonely": ("sadness", "high"),
+    "heartbroken": ("sadness", "high"),
+    "devastating": ("sadness", "high"),
+    "grief": ("sadness", "high"),
+    "hopeless": ("sadness", "high"),
+    "helpless": ("sadness", "high"),
+    "empty": ("sadness", "medium"),
+    "broken": ("sadness", "high"),
+    "crushed": ("sadness", "high"),
+    # anxiety / overwhelm
+    "overwhelming": ("anxiety", "high"),
+    "overwhelmed": ("anxiety", "high"),
+    "anxious": ("anxiety", "medium"),
+    "worried": ("anxiety", "medium"),
+    "spiraling": ("anxiety", "high"),
+    "can't cope": ("anxiety", "high"),
+    "cannot cope": ("anxiety", "high"),
+    # fear
+    "terrified": ("fear", "high"),
+    "scared": ("fear", "high"),
+    "petrified": ("fear", "high"),
+    # anger
+    "infuriating": ("anger", "high"),
+    "frustrating": ("anger", "medium"),
+    "frustrated": ("anger", "medium"),
+    "furious": ("anger", "high"),
+    "rage": ("anger", "high"),
+    "resentful": ("anger", "medium"),
+    # exhaustion / burnout
+    "exhausted": ("exhaustion", "high"),
+    "burnt out": ("exhaustion", "high"),
+    "worn out": ("exhaustion", "medium"),
+    "depleted": ("exhaustion", "high"),
+    "struggling": ("exhaustion", "medium"),
+}
+
+
+def extract_emotion_highlights(text: str) -> List[Dict[str, str]]:
+    """Find up to 2 high-intensity emotional words in the response text."""
+    import re
+    found = []
+    lowered = text.lower()
+    intensity_rank = {"high": 0, "medium": 1}
+    for phrase, (emotion, intensity) in EMOTION_WORD_MAP.items():
+        pattern = r'\b' + re.escape(phrase) + r'\b'
+        match = re.search(pattern, lowered)
+        if match:
+            start, end = match.span()
+            found.append({
+                "word": text[start:end],
+                "emotion": emotion,
+                "intensity": intensity,
+            })
+    found.sort(key=lambda x: intensity_rank.get(x["intensity"], 99))
+    return found[:2]
+
 
 class ResourceItem(BaseModel):
     title: str
@@ -138,6 +204,7 @@ class PredictResponse(BaseModel):
     llmUsed: bool = False
     llmError: str | None = None
     geminiUsed: bool = False
+    emotionHighlights: List[Dict[str, str]] = Field(default_factory=list)
     geminiError: str | None = None
 
 
@@ -173,6 +240,7 @@ class PredictionPayload(TypedDict):
     directScoreQuery: bool
     llmUsed: bool
     llmError: str | None
+    emotionHighlights: List[Dict[str, str]]
 
 
 app = FastAPI(title="AYASA ML Backend", version="3.0.0")
@@ -338,19 +406,30 @@ def infer_stress_probs(text: str, emotions: Dict[str, float]) -> Dict[str, float
     return normalize_probs(probs)
 
 
-def calibrate_stress_prediction(text: str, label: str, confidence: float, emotion: str) -> Tuple[str, float]:
+def calibrate_stress_prediction(
+    text: str, label: str, confidence: float, emotion: str, emotions: Dict[str, float] | None = None
+) -> Tuple[str, float]:
     lowered = " ".join(text.lower().split())
     distress_hits = sum(1 for key in DISTRESS_KEYWORDS if key in lowered)
     calm_hits = sum(1 for key in CALM_KEYWORDS if key in lowered)
 
+    # Downgrade clearly-calm High detections
     if label == "High" and distress_hits == 0 and calm_hits >= 1 and emotion in {"joy", "love", "surprise"}:
         return "Low", min(confidence, 0.65)
 
+    # Keyword-based upgrades
     if label == "Low" and distress_hits >= 3:
         return "High", max(confidence, 0.72)
-
     if label == "Low" and distress_hits >= 2:
         return "Medium", max(confidence, 0.64)
+
+    # Emotion-based upgrade: strong negative emotion overrides a Low reading
+    if label == "Low" and emotions:
+        neg = emotions.get("anger", 0) + emotions.get("sadness", 0) + emotions.get("fear", 0)
+        if neg >= 0.80:
+            return "High", max(confidence, 0.70)
+        if neg >= 0.55:
+            return "Medium", max(confidence, 0.62)
 
     return label, confidence
 
@@ -373,7 +452,7 @@ def run_prediction(text: str, llm_api_key: str) -> PredictionPayload:
 
     stress_label = max(stress_probs, key=stress_probs.get)
     confidence = float(stress_probs[stress_label])
-    stress_label, confidence = calibrate_stress_prediction(text, stress_label, confidence, top_emotion)
+    stress_label, confidence = calibrate_stress_prediction(text, stress_label, confidence, top_emotion, emotions)
 
     # Keep confidence within a usable range without pinning it to a ceiling.
     confidence = max(0.55, min(confidence, 0.995))
@@ -396,6 +475,8 @@ def run_prediction(text: str, llm_api_key: str) -> PredictionPayload:
             top_emotion = "fear"
             confidence = 0.99
 
+    highlights = extract_emotion_highlights(ayasa_response)
+
     return {
         "stressLevel": stress_label,
         "emotion": top_emotion,
@@ -406,6 +487,7 @@ def run_prediction(text: str, llm_api_key: str) -> PredictionPayload:
         "directScoreQuery": direct_query,
         "llmUsed": llm_used,
         "llmError": llm_error,
+        "emotionHighlights": highlights,
     }
 
 
@@ -447,6 +529,7 @@ async def predict_endpoint(request: PredictRequest):
         directScoreQuery=payload["directScoreQuery"],
         llmUsed=payload["llmUsed"],
         llmError=payload["llmError"],
+        emotionHighlights=payload.get("emotionHighlights", []),
         # Compatibility aliases for existing Node parser
         geminiUsed=payload["llmUsed"],
         geminiError=payload["llmError"],

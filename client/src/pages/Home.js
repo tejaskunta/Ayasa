@@ -68,6 +68,7 @@ function normalizeEntry(entry, index = 0) {
     confidence: Number(entry.confidence || 0),
     ayasaResponse: String(entry.ayasaResponse || ''),
     resources: Array.isArray(entry.resources) ? entry.resources : [],
+    emotionHighlights: Array.isArray(entry.emotionHighlights) ? entry.emotionHighlights : [],
     timestamp: entry.timestamp || new Date().toISOString(),
   };
 }
@@ -247,6 +248,58 @@ function pickExerciseForEmotion(emotion, stressLevel) {
     if (e.includes(key)) return exercise;
   }
   return STRESS_EXERCISE[normalizeStressLevel(stressLevel)] || 'thoughtDump';
+}
+
+const EMOTION_COLORS = {
+  sadness:   '#4a90d9',
+  anxiety:   '#9b59b6',
+  fear:      '#8e44ad',
+  anger:     '#e74c3c',
+  exhaustion:'#7f8c8d',
+};
+
+const EMOTION_ACTIONS = {
+  sadness:   'Try a small win to shift your focus.',
+  anxiety:   'Box breathing can ease this feeling.',
+  fear:      'Grounding yourself in the present helps.',
+  anger:     'Step away for 90 seconds before reacting.',
+  exhaustion:'A short breathing exercise can restore calm.',
+};
+
+function EmotionText({ text, highlights }) {
+  if (!highlights || !highlights.length) return <p>{text}</p>;
+
+  const ranges = [];
+  const lower = text.toLowerCase();
+  highlights.forEach(({ word, emotion, intensity }) => {
+    const idx = lower.indexOf(word.toLowerCase());
+    if (idx !== -1) ranges.push({ start: idx, end: idx + word.length, word, emotion, intensity });
+  });
+  ranges.sort((a, b) => a.start - b.start);
+
+  if (!ranges.length) return <p>{text}</p>;
+
+  const parts = [];
+  let cursor = 0;
+  ranges.forEach(({ start, end, word, emotion, intensity }, i) => {
+    if (start < cursor) return;
+    if (start > cursor) parts.push(text.slice(cursor, start));
+    const color = EMOTION_COLORS[emotion] || '#7f8c8d';
+    const tip = `${emotion.charAt(0).toUpperCase() + emotion.slice(1)} · ${intensity} intensity\n${EMOTION_ACTIONS[emotion] || ''}`;
+    parts.push(
+      <span
+        key={i}
+        className="emotion-word"
+        style={{ '--ec': color }}
+        data-tooltip={tip}
+      >
+        {text.slice(start, end)}
+      </span>
+    );
+    cursor = end;
+  });
+  if (cursor < text.length) parts.push(text.slice(cursor));
+  return <p>{parts}</p>;
 }
 
 function GroundingExercise() {
@@ -935,7 +988,7 @@ export default function Home() {
         role: 'assistant',
         type: 'analysis',
         text: botText,
-        meta: { emotion: result.emotion },
+        emotionHighlights: result.emotionHighlights || [],
       });
 
       // Persist conversation to MongoDB (fire and forget)
@@ -1229,21 +1282,18 @@ export default function Home() {
       </aside>
 
       <main className="mainchat-main">
-        <header className="mainchat-header">
-          <div className="mainchat-top-left" />
-          <div className="mainchat-header-actions">
-            <button
-              type="button"
-              className="mainchat-reset-btn"
-              onClick={handleResetChat}
-              aria-label="Reset chat"
-              title="Clear conversation and start fresh"
-            >
-              <span className="material-symbols-rounded">refresh</span>
-              <span className="mainchat-reset-label">Reset chat</span>
-            </button>
-          </div>
-        </header>
+        <div className="mainchat-reset-bar">
+          <button
+            type="button"
+            className="mainchat-reset-btn"
+            onClick={handleResetChat}
+            aria-label="Reset chat"
+            title="Clear conversation and start fresh"
+          >
+            <span className="material-symbols-rounded">refresh</span>
+            <span className="mainchat-reset-label">Reset chat</span>
+          </button>
+        </div>
 
         <section className={`mainchat-hero ${hasChatStarted ? 'dismissed' : ''}`}>
           <h1>{greeting}, {displayName}</h1>
@@ -1266,7 +1316,10 @@ export default function Home() {
           {messages.map((message) => (
             <div key={message.id} className={`mainchat-msg ${message.role === 'assistant' ? 'assistant' : 'user'} ${message.type || ''}`}>
               <div className="mainchat-msg-bubble">
-                <p>{message.text}</p>
+                <EmotionText
+                  text={message.text}
+                  highlights={message.role === 'assistant' ? (message.emotionHighlights || []) : []}
+                />
                 {message.type === 'exercise' && (
                   <ExercisePanel
                     exerciseKey={message.exerciseKey}
@@ -1274,17 +1327,16 @@ export default function Home() {
                     onComplete={handleExerciseCompleted}
                   />
                 )}
-                {message.meta && (
-                  <div className="mainchat-meta-row">
-                    <span className="mainchat-meta-pill">Emotion: {message.meta.emotion}</span>
-                  </div>
-                )}
               </div>
             </div>
           ))}
           {loading && (
             <div className="mainchat-msg assistant loading">
-              <div className="mainchat-msg-bubble"><p>Analyzing your message...</p></div>
+              <div className="mainchat-msg-bubble">
+                <div className="mainchat-typing-dots">
+                  <span /><span /><span />
+                </div>
+              </div>
             </div>
           )}
           <div ref={endRef} />
@@ -1297,33 +1349,21 @@ export default function Home() {
             submitMessage(input);
           }}
         >
-          <div className="mainchat-input-row">
-            <div className="mainchat-orb-dock" aria-hidden="true">
-              <Orb
-                hoverIntensity={0.3}
-                rotateOnHover={true}
-                paused={false}
-                hue={0}
-                forceHoverState={false}
-                backgroundColor="#ecf3ff"
-              />
-            </div>
-            <div className="mainchat-input-shell">
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleComposerKeyDown}
-                placeholder="How can AYASA help you today?"
-                rows={5}
-                maxLength={2000}
-              />
-              <div className="mainchat-composer-bar">
-                <span className="mainchat-composer-hint">Shift + Enter for new line</span>
-                <div className="mainchat-composer-actions">
-                  <button className="mainchat-send-btn" type="submit" disabled={loading || !input.trim()}>
-                    <span className="material-symbols-rounded">arrow_upward</span>
-                  </button>
-                </div>
+          <div className="mainchat-input-shell">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleComposerKeyDown}
+              placeholder="How can AYASA help you today?"
+              rows={2}
+              maxLength={2000}
+            />
+            <div className="mainchat-composer-bar">
+              <span className="mainchat-composer-hint">Shift + Enter for new line</span>
+              <div className="mainchat-composer-actions">
+                <button className="mainchat-send-btn" type="submit" disabled={loading || !input.trim()}>
+                  <span className="material-symbols-rounded">arrow_upward</span>
+                </button>
               </div>
             </div>
           </div>
