@@ -20,12 +20,16 @@ def _build_structured_prompt(user_input: str, stress: str, emotions: Dict[str, f
     normalized_stress = str(stress or "medium").strip().lower()
 
     lowered = user_input.lower()
+    word_count = len(user_input.split())
     is_agreement = (
         any(w in lowered for w in _AGREEMENT_WORDS)
-        and len(user_input.split()) <= 12
+        and word_count <= 12
     )
+    is_brief = word_count <= 4
 
-    if is_agreement:
+    if is_brief:
+        extra = "User gave a very short reply. Write ONE empathy sentence only. Do NOT end with a question. Do NOT include a question mark. Full stop after the empathy sentence."
+    elif is_agreement:
         extra = "User just agreed or said yes to something. Affirm warmly in one sentence and guide them into the next concrete step or action. Ask zero questions."
     elif normalized_stress in {"medium", "high"} and "fine" in lowered:
         extra = "User may be hiding stress. Gently probe deeper."
@@ -80,6 +84,18 @@ def generate_response(
         print("[Groq] ERROR: no API key resolved — check GROQ_API_KEY env var")
         return None, "Missing GROQ_API_KEY"
 
+    word_count = len(user_input.split())
+    if word_count <= 4:
+        system_msg = (
+            "You are AYASA, a calm empathetic assistant. "
+            "The user gave a very short reply. "
+            "Your ENTIRE response must be exactly ONE sentence of warmth or validation. "
+            "It MUST end with a period. It MUST NOT contain a question mark. "
+            "No exceptions."
+        )
+    else:
+        system_msg = "You are AYASA, a calm, practical, empathetic mental-health support assistant."
+
     print(f"[Groq] calling model={DEFAULT_GROQ_MODEL} key_len={len(resolved_key)}")
     try:
         client = Groq(api_key=resolved_key)
@@ -88,7 +104,7 @@ def generate_response(
             messages=[
                 {
                     "role": "system",
-                    "content": "You are AYASA, a calm, practical, empathetic mental-health support assistant.",
+                    "content": system_msg,
                 },
                 {
                     "role": "user",

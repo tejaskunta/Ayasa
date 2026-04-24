@@ -848,8 +848,12 @@ export default function Home() {
     setInput('');
 
     // Short pure decline while an exercise is pending → acknowledge and keep conversation alive
-    const isPureDecline = pendingExercise &&
-      /^\s*(no|nope|not now|later|skip|maybe later|not yet|no thanks|not right now)\s*[.!?]?\s*$/i.test(text);
+    const isPureDecline = pendingExercise && (
+      /^\s*(no|nope|not now|later|skip|maybe later|not yet|no thanks|not right now)\s*[.!?]?\s*$/i.test(text) ||
+      /\b(don'?t|do not)\s+want\b/i.test(text) ||
+      /\bnot\s+interested\b/i.test(text) ||
+      /\bi'?m\s+(fine|good|okay|ok)\b/i.test(text)
+    );
     if (isPureDecline) {
       setPendingExercise(null);
       pushMessage({
