@@ -252,7 +252,7 @@ exports.submitCheckIn = async (req, res) => {
       return res.json({ message: 'Duplicate check-in suppressed; returning previous result', result: recentEntry.result, deduplicated: true });
     }
 
-    let stressLevel, emotion, ayasaResponse, confidence, resources, directScoreQuery, geminiUsed, geminiError;
+    let stressLevel, emotion, ayasaResponse, confidence, resources, directScoreQuery, geminiUsed, geminiError, emotionHighlights;
 
     try {
       const ml = await callMLBackend(userInput, safeUserId, resolvedKey);
@@ -264,6 +264,7 @@ exports.submitCheckIn = async (req, res) => {
       directScoreQuery = Boolean(ml.directScoreQuery);
       geminiUsed = Boolean(ml.llmUsed);
       geminiError = ml.llmError || null;
+      emotionHighlights = ml.emotionHighlights || [];
     } catch (mlError) {
       console.warn('ML backend unavailable, using fallback:', mlError.message);
       const levels = ['Low', 'Moderate', 'High'];
@@ -275,6 +276,7 @@ exports.submitCheckIn = async (req, res) => {
       directScoreQuery = false;
       geminiUsed = false;
       geminiError = `Node fallback path: ${mlError.message}`;
+      emotionHighlights = [];
     }
 
     let checkInData;
@@ -295,7 +297,7 @@ exports.submitCheckIn = async (req, res) => {
     }
 
     recentCheckIns.set(dedupKey, { createdAt: Date.now(), result: checkInData });
-    res.json({ message: 'Check-in submitted successfully', result: { ...checkInData, emotionHighlights: ml.emotionHighlights || [] } });
+    res.json({ message: 'Check-in submitted successfully', result: { ...checkInData, emotionHighlights } });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
