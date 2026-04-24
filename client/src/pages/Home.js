@@ -890,7 +890,9 @@ export default function Home() {
 
     // Positive exercise request — covers "exercise", "exercises", "do an exercise", etc.
     const wantsExercise = /\bexercises?\b/i.test(text) &&
-      !/\b(no|don'?t|not|never|stop)\b.{0,20}\bexercises?\b/i.test(text);
+      !/\b(no|don'?t|not|never|stop)\b.{0,20}\bexercises?\b/i.test(text) &&
+      !exerciseOfferShownRef.current &&
+      !/\b(gave|helped|made me feel|felt better|worked|did the)\b/i.test(text);
     if (wantsExercise) {
       const latestEntry = historyEntries[0] || selectedEntry;
       const exerciseKey = pickExerciseForEmotion(latestEntry?.emotion, latestEntry?.stressLevel);

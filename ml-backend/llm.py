@@ -27,8 +27,11 @@ def _build_structured_prompt(user_input: str, stress: str, emotions: Dict[str, f
     )
     is_brief = word_count <= 4
 
-    if is_brief:
+    has_number = any(ch.isdigit() for ch in user_input)
+    if is_brief and not has_number:
         extra = "User gave a very short reply. Write ONE empathy sentence only. Do NOT end with a question. Do NOT include a question mark. Full stop after the empathy sentence."
+    elif is_brief and has_number:
+        extra = "User gave a specific practical answer (a time, number, or quantity). Acknowledge it warmly and positively in one sentence. No question."
     elif is_agreement:
         extra = "User just agreed or said yes to something. Affirm warmly in one sentence and guide them into the next concrete step or action. Ask zero questions."
     elif normalized_stress in {"medium", "high"} and "fine" in lowered:
@@ -53,6 +56,7 @@ Rules:
 - If the user agreed or said yes to something, affirm and guide them into the next step — zero questions
 - Do NOT run through a checklist of questions
 - Do NOT give generic advice
+- Never minimise, dismiss, or label the user's feelings as dramatic, exaggerated, or over the top
 - Sound like a supportive friend having a real conversation, not a therapist conducting a session
 
 Example 1 — stressed input:
