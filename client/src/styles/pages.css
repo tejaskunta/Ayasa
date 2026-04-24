@@ -5569,6 +5569,12 @@ body {
   opacity: 1;
 }
 
+/* Intro message: preserve newlines from the guide text */
+.mainchat-msg.intro .mainchat-msg-bubble p {
+  white-space: pre-line;
+  line-height: 1.75;
+}
+
 /* ── Typing dots loading animation ─────────────────────────────────────────── */
 .mainchat-typing-dots {
   display: flex;

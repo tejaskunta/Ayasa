@@ -527,7 +527,7 @@ export default function Home() {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
       type: 'intro',
-      text: 'I am ready whenever you are. Tell me how you feel, what is triggering stress, or ask for your latest trends.',
+      text: "Hi! I'm AYASA — your personal stress support companion. Just share how you're feeling and I'll listen, detect your stress level, and respond with support.\n\nYou can try:\n• \"I'm feeling overwhelmed with work\"\n• \"My exams are stressing me out\"\n• \"I had a bad day\"\n\nOr use the quick prompts above to see your stress trends. I'm here whenever you're ready.",
       time: new Date().toISOString(),
     }];
   });
@@ -588,7 +588,7 @@ export default function Home() {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
         type: 'intro',
-        text: 'I am ready whenever you are. Tell me how you feel, what is triggering stress, or ask for your latest trends.',
+        text: "Welcome back. Tell me how you're feeling, what's triggering stress, or ask for your latest trends.",
         time: new Date().toISOString(),
       }];
   };
@@ -662,7 +662,7 @@ export default function Home() {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
       type: 'intro',
-      text: 'Chat cleared. I am ready whenever you are. Tell me how you feel, what is triggering stress, or ask for your latest trends.',
+      text: "Chat cleared. Tell me how you're feeling, share what's on your mind, or try one of the quick prompts above.",
       time: new Date().toISOString(),
     };
     setMessages([initMsg]);
