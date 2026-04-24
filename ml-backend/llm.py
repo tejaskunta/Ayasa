@@ -8,17 +8,32 @@ from groq import Groq
 DEFAULT_GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant").strip() or "llama-3.1-8b-instant"
 
 
+_AGREEMENT_WORDS = {
+    "sure", "yes", "yeah", "yep", "okay", "ok", "alright",
+    "let's", "let us", "sounds good", "i will", "i'll", "go ahead",
+    "why not", "definitely", "absolutely",
+}
+
+
 def _build_structured_prompt(user_input: str, stress: str, emotions: Dict[str, float], strategy: str) -> str:
     dominant_emotion = max(emotions, key=emotions.get) if emotions else "unknown"
     normalized_stress = str(stress or "medium").strip().lower()
 
-    if normalized_stress in {"medium", "high"} and "fine" in user_input.lower():
+    lowered = user_input.lower()
+    is_agreement = (
+        any(w in lowered for w in _AGREEMENT_WORDS)
+        and len(user_input.split()) <= 12
+    )
+
+    if is_agreement:
+        extra = "User just agreed or said yes to something. Affirm warmly in one sentence and guide them into the next concrete step or action. Ask zero questions."
+    elif normalized_stress in {"medium", "high"} and "fine" in lowered:
         extra = "User may be hiding stress. Gently probe deeper."
     else:
         extra = ""
 
     return f"""
-You are a calm, human-like mental health support chatbot.
+You are AYASA, a calm, empathetic mental health support chatbot having a real conversation.
 
 User message: \"{user_input}\"
 Stress level: {normalized_stress}
@@ -27,23 +42,26 @@ Strategy: {strategy}
 {extra}
 
 Rules:
-- Keep response 2-4 lines
-- Sound natural, not robotic
-- Always:
-  1. Acknowledge feeling
-  2. Reflect meaning
-    3. Ask up to three concise questions when helpful (how do you feel, what is causing stress, any body pain)
-- After questions, gently invite the user to try an exercise if appropriate
+- Respond directly to what the user just said before anything else
+- Keep response to 2-3 sentences maximum
+- Ask at most ONE question per message — never list multiple questions
+- Structure: one sentence acknowledging or responding, then optionally one question
+- If the user agreed or said yes to something, affirm and guide them into the next step — zero questions
+- Do NOT run through a checklist of questions
 - Do NOT give generic advice
-- Do NOT sound like a therapist
+- Sound like a supportive friend, not a therapist
 
-Example style:
+Example 1 — stressed input:
 Input: "I'm fine, just tired"
-Output style: "You say you're fine, but it sounds like you might be a bit drained. Has something been building up lately?"
+Output: "You say you're fine, but it sounds like something might be wearing on you. What's been taking the most out of you lately?"
 
-Example style 2:
-Input: "I am feeling low"
-Output style: "That sounds heavy, and I am glad you said it out loud. What has been weighing on you most, and are you feeling it in your body too?"
+Example 2 — heavy emotion:
+Input: "I am feeling really low"
+Output: "That sounds heavy, and I am glad you said it. What's been weighing on you most right now?"
+
+Example 3 — user agreeing to something:
+Input: "Sure I could do the gratitude ritual"
+Output: "Let's do it. Think of three small things that went well today — they can be tiny. What's the first one that comes to mind?"
 
 Respond:
 """.strip()
