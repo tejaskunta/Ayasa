@@ -324,7 +324,9 @@ function BreathingCircle() {
   return (
     <div className="mainchat-exercise-card">
       <h5>Breathing Circle</h5>
-      <div className="mainchat-breath-circle" />
+      <div className="mainchat-breath-circle-wrap">
+        <div className="mainchat-breath-circle" />
+      </div>
       <p className="mainchat-exercise-hint">Inhale as the circle expands, exhale as it contracts. Continue for 60-90 seconds.</p>
     </div>
   );
@@ -859,13 +861,32 @@ export default function Home() {
       pushMessage({
         role: 'assistant',
         type: 'text',
-        text: "That's okay! Keep sharing how you feel, or just say 'exercise' whenever you're ready to try one.",
+        text: "That's okay! Keep sharing how you feel, or just say 'box breathing' or 'breathing circle' whenever you're ready.",
       });
       return;
     }
 
-    // Longer message containing "no" or any other message → clear pending exercise and fall through to ML
-    if (pendingExercise) setPendingExercise(null);
+    // Detect specific exercise choice while an exercise is pending
+    if (pendingExercise) {
+      const wantsBox = /\bbox\b/i.test(text);
+      const wantsCircle = /\bcircle\b|\bbreathing circle\b/i.test(text);
+      if (wantsBox || wantsCircle) {
+        const chosenKey = wantsBox ? 'boxBreathing' : 'breathing';
+        const chosenName = EXERCISE_NAMES[chosenKey];
+        const chosenStress = normalizeStressLevel(pendingExercise.stressLevel || 'Moderate');
+        setPendingExercise(null);
+        exerciseOfferShownRef.current = true;
+        pushMessage({
+          role: 'assistant',
+          type: 'exercise',
+          text: `Starting ${chosenName} for you.`,
+          exerciseStress: chosenStress,
+          exerciseKey: chosenKey,
+        });
+        return;
+      }
+      setPendingExercise(null);
+    }
 
     // Positive exercise request — covers "exercise", "exercises", "do an exercise", etc.
     const wantsExercise = /\bexercises?\b/i.test(text) &&
@@ -934,7 +955,7 @@ export default function Home() {
         pushMessage({
           role: 'assistant',
           type: 'exercise-offer',
-          text: `I have a "${exerciseName}" exercise ready for you — it may help with what you're feeling. Would you like to try it? (say "exercise" to start, or keep sharing)`,
+          text: `Would you like to try an exercise? I can guide you through **Box Breathing** (good for tension and anger) or a **Breathing Circle** (gentle and calming). Just say "box breathing" or "breathing circle" — or "exercise" and I'll pick for you.`,
         });
       }
 
