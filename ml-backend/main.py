@@ -54,6 +54,10 @@ DISTRESS_KEYWORDS = {
     "can't cope",
     "self-harm",
     "suicide",
+    "kill myself",
+    "want to die",
+    "end my life",
+    "harm myself",
     "worthless",
     "depressed",
     "fear",
@@ -387,6 +391,10 @@ def run_prediction(text: str, llm_api_key: str) -> PredictionPayload:
         ayasa_response = chat_result["text"] or FALLBACK_REPLY[stress_label]
         llm_used = bool(chat_result["llm_used"])
         llm_error = chat_result["llm_error"]
+        if chat_result.get("crisis"):
+            stress_label = "High"
+            top_emotion = "fear"
+            confidence = 0.99
 
     return {
         "stressLevel": stress_label,
