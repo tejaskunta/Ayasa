@@ -1,0 +1,125 @@
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 260px;
+}
+
+.turn {
+  max-width: min(78%, 520px);
+  border-radius: var(--radius);
+  padding: 12px 15px;
+  line-height: 1.55;
+  border: 1px solid var(--border);
+  animation: turn-in 0.25s ease-out;
+}
+
+/* user messages sit on the right, bot messages on the left */
+.turn-user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  border-bottom-right-radius: 4px;
+}
+
+.turn-bot {
+  align-self: flex-start;
+  background: var(--surface);
+  color: var(--ink);
+  border-bottom-left-radius: 4px;
+}
+
+/* Crisis turns are visually unmistakable, not hidden in a tooltip. */
+.turn-crisis {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  border-left: 4px solid var(--level-high);
+}
+
+.turn-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.composer {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+  padding-top: 14px;
+}
+
+.composer textarea {
+  flex: 1;
+  min-height: 56px;
+  max-height: 180px;
+}
+
+.typing {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+  animation: typing-bounce 1.2s infinite ease-in-out;
+}
+.typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes turn-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes typing-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+/* Crisis notice banner at the top of the thread. */
+.safety-banner {
+  border: 1px solid var(--danger-border);
+  background: var(--danger-bg);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  font-size: 0.92rem;
+}
+
+.safety-banner strong {
+  color: var(--level-high);
+}

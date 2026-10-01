@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+.venv/
+venv/
+
+# env / secrets
+.env
+.env.local
+*.env
+!.env.example
+
+# python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# build output
+dist/
+build/
+coverage/
+
+# macos
+.DS_Store
+
+# model cache (HF downloads live outside the repo)
+.cache/

@@ -1,0 +1,76 @@
+# One command to run the whole system:  docker compose up --build
+#
+# Services:
+#   mongo          - database (with a named volume so data survives restarts)
+#   model-service  - FastAPI + your Hugging Face model boundary
+#   server         - Express API (auth, chat, persistence, safety)
+#   client         - React (Vite) build served by nginx
+#
+# The server talks to the model-service by DNS name ("model-service"), NOT
+# localhost, because inside a network each container is its own machine.
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  model-service:
+    build: ./model-service
+    restart: unless-stopped
+    environment:
+      # HF model is OFF by default so the system boots fast and deterministically.
+      # Set ENABLE_HF_MODELS=true (and HF_TOKEN if the model is private) to load it.
+      ENABLE_HF_MODELS: "false"
+      HF_TOKEN: "${HF_TOKEN:-}"
+      STRESS_MODEL_NAME: "${STRESS_MODEL_NAME:-ganeshtk/silentstress-model}"
+      STRESS_MODEL_SUBFOLDER: "${STRESS_MODEL_SUBFOLDER:-Complete_StressModel/bert_stress_model_final_2}"
+      GROQ_API_KEY: "${GROQ_API_KEY:-}"
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  server:
+    build: ./server
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      model-service:
+        condition: service_healthy
+    environment:
+      PORT: "5000"
+      MONGODB_URI: "mongodb://mongo:27017/ayasa"
+      MODEL_SERVICE_URL: "http://model-service:8000"
+      MODEL_TIMEOUT_MS: "8000"
+      JWT_SECRET: "${JWT_SECRET:-dev-only-change-me}"
+      CLIENT_ORIGIN: "http://localhost:5173"
+    ports:
+      - "5000:5000"
+
+  client:
+    build:
+      context: ./client
+      args:
+        # baked into the bundle at build time (Vite inlines VITE_* vars)
+        VITE_API_URL: "http://localhost:5000"
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "5173:80"
+
+volumes:
+  mongo-data:

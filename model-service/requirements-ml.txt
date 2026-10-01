@@ -1,0 +1,11 @@
+# Optional ML stack. Install this ONLY if you want the real Hugging Face model:
+#   pip install -r requirements-ml.txt
+#
+# The service is designed to run WITHOUT this file installed. In that case it
+# reports modelMode="rules_only" and uses the deterministic fallback in model.py.
+# That is the whole point: the app never breaks just because the model is absent.
+#
+# Pins chosen for torch 2.2.x compatibility (numpy must stay < 2).
+transformers==4.40.2
+torch==2.2.0
+numpy<2

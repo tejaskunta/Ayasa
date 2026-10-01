@@ -1,0 +1,322 @@
+/* ---------------------------------------------------------------------------
+   Ayasa design tokens + global styles
+
+   Design read: mental-health support product -> trust-first, accessibility-
+   critical. So: low visual variance, minimal motion, generous space, high
+   contrast. Deliberately NOT the generic "AI-purple gradient on black" default.
+
+   One palette, defined once as CSS custom properties, reused everywhere.
+--------------------------------------------------------------------------- */
+
+:root {
+  /* Warm, calm neutrals — softer than pure white, easier on the eyes. */
+  --bg: #f7f5f1;
+  --bg-soft: #fffdfa;
+  --surface: #ffffff;
+  --border: #e6e1d8;
+  --border-strong: #d6cfc2;
+
+  /* Ink */
+  --ink: #1f2523;
+  --ink-soft: #55605c;
+  --ink-faint: #8b938f;
+
+  /* Accent: muted sage / teal. Calm, not clinical, not purple. */
+  --accent: #3f6f63;
+  --accent-strong: #2f574e;
+  --accent-soft: #e4efe9;
+
+  /* Stress-level colors (used consistently across chat + insights). */
+  --level-low: #4f8a5b;
+  --level-medium: #b9812f;
+  --level-high: #b4513f;
+  --danger-bg: #fbf0ee;
+  --danger-border: #e6c3bc;
+
+  --radius: 14px;
+  --radius-sm: 9px;
+  --shadow: 0 1px 2px rgba(31, 37, 35, 0.04), 0 8px 24px rgba(31, 37, 35, 0.06);
+
+  --font-body: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  --maxw: 720px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-body);
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0 0 0.5em;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: clamp(2rem, 5vw, 2.9rem);
+}
+h2 {
+  font-size: 1.5rem;
+}
+h3 {
+  font-size: 1.15rem;
+}
+
+p {
+  margin: 0 0 1rem;
+}
+
+a {
+  color: var(--accent-strong);
+}
+
+/* --- layout helpers ------------------------------------------------------- */
+
+.page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  width: 100%;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* --- header --------------------------------------------------------------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-soft) 80%, transparent);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.brand {
+  font-family: var(--font-body);
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.brand-dot {
+  color: var(--accent);
+}
+
+/* --- cards ---------------------------------------------------------------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+
+.card-soft {
+  background: var(--bg-soft);
+}
+
+/* --- buttons -------------------------------------------------------------- */
+
+.btn {
+  font: inherit;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  padding: 11px 18px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent-strong);
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+}
+
+/* --- forms ---------------------------------------------------------------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+input,
+textarea {
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  width: 100%;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 92px;
+  font-family: var(--font-ui);
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* --- messages / alerts ---------------------------------------------------- */
+
+.alert {
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 0.92rem;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-soft);
+}
+
+.alert-error {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: #8a3a2b;
+}
+
+/* --- badges / pills ------------------------------------------------------- */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  color: var(--ink-soft);
+  background: var(--bg-soft);
+}
+
+.pill-low {
+  color: var(--level-low);
+  border-color: color-mix(in srgb, var(--level-low) 40%, transparent);
+  background: color-mix(in srgb, var(--level-low) 10%, transparent);
+}
+.pill-medium {
+  color: var(--level-medium);
+  border-color: color-mix(in srgb, var(--level-medium) 40%, transparent);
+  background: color-mix(in srgb, var(--level-medium) 12%, transparent);
+}
+.pill-high {
+  color: var(--level-high);
+  border-color: color-mix(in srgb, var(--level-high) 40%, transparent);
+  background: color-mix(in srgb, var(--level-high) 10%, transparent);
+}
+
+.muted {
+  color: var(--ink-soft);
+}
+.faint {
+  color: var(--ink-faint);
+  font-size: 0.85rem;
+}
+
+/* --- accessibility -------------------------------------------------------- */
+
+/* Respect the user's motion preference everywhere. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Visible focus ring for keyboard users. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

@@ -1,0 +1,11 @@
+# Core API dependencies.
+# Deliberately small so the service starts fast and installs in seconds.
+# The ML model stack lives in requirements-ml.txt and is OPTIONAL at runtime.
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+python-dotenv==1.0.1
+httpx==0.27.2
+
+# testing
+pytest==8.3.3
