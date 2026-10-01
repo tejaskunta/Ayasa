@@ -188,7 +188,7 @@ ENABLE_HF_MODELS=true STRESS_MODEL_NAME=ganeshtk/silentstress-model \
 ## Tests
 
 ```bash
-cd model-service && .venv/bin/python -m pytest -q   # 21 tests
+cd model-service && .venv/bin/python -m pytest -q   # 23 tests
 cd server        && npm test                        # 12 tests
 cd client        && npm run build                   # build check
 ```
