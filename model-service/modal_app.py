@@ -38,7 +38,6 @@ IMAGE_IGNORE = [
     ".env.example",
     "modal_app.py",
     "Dockerfile",
-    "Dockerfile.fat",
     "requirements-ml.txt",
     "requirements.txt",
     "pytest.ini",

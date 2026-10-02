@@ -19,8 +19,23 @@ dist/
 build/
 coverage/
 
-# macos
+# logs
+*.log
+logs/
+
+# ide
+.vscode/
+.idea/
+
+# os
 .DS_Store
+Thumbs.db
+desktop.ini
+
+# deploy / temp
+.vercel/
+tmp/
+temp/
 
 # model cache (HF downloads live outside the repo)
 .cache/

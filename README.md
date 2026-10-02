@@ -1,140 +1,126 @@
 # Ayasa
 
-A calm, reliable mental-wellbeing check-in app. Talk in a chat or log a quick
-check-in; Ayasa estimates your stress level, responds, and shows you patterns
-over time.
+Ayasa is a mental-wellbeing check-in app. A user talks to a chat assistant or
+logs a short check-in; Ayasa estimates their stress level and dominant emotion,
+responds with a supportive reply, and shows patterns over time on a personal
+insights page. The core engineering problem is trust: every estimate is
+labeled as an estimate, crisis text is caught by a deterministic safety layer
+that never depends on a model or the network, and each service in the stack
+owns exactly one responsibility.
 
-This is a **from-scratch rebuild** of an earlier prototype. The old version was
-ambitious and buggy. This one is deliberately small and boring in the places
-that matter, because a mental-health product has to be *trustworthy* before it
-is clever.
+![Ayasa](docs/screenshots/ayasa-app.jpeg)
 
-> **Live:** <https://ayasa-client.vercel.app> — API on
-> <https://ayasa-server.vercel.app>, ML service on Modal.
+## Live Demo
 
-| The landing page — calm on purpose. | A real check-in: the BERT model classifies stress and emotion, the LLM replies, and the footer states honestly that it is an estimate. |
-| --- | --- |
-| ![Ayasa landing page](docs/screenshots/landing.png) | ![Ayasa chat with stress and emotion pills](docs/screenshots/chat.png) |
+- App: <https://ayasa-client.vercel.app>
+- API: <https://ayasa-server.vercel.app> (health: `/api/health`)
 
----
+## Overview
 
-## Why it was rebuilt
+Three services, one job each:
 
-The original had a few real defects. Each one is fixed here on purpose, and
-each fix is a lesson:
+- **Client** — React 18 SPA. Talks only to the API; never touches the database.
+- **Server** — Express API. Auth, sessions, check-ins, persistence. The only
+  service that reads or writes MongoDB.
+- **Model service** — FastAPI. Text in, structured analysis out. Knows nothing
+  about users or the database, so it can run locally, in a container, or on a
+  GPU platform without the server caring.
 
-| Original problem | Why it broke | What this version does |
-| --- | --- | --- |
-| Database rejected model output | Model emitted `"Medium"`, DB enum only allowed `"Moderate"` | One shared vocabulary (`Low`/`Medium`/`High`) defined in `contract.py` and `contract.js`, used by every layer |
-| Two endpoints (`/predict` + `/chat`) drifted apart | Two contracts, two sources of truth | A single `POST /analyze` endpoint, versioned `1.0.0` |
-| App crashed / misbehaved when the ML model was missing | Model was treated as always-present | `rules_only` is a **first-class mode** — the service boots and works with zero ML installed |
-| Silent failures from the LLM step | Exceptions swallowed, responses guessed | Deterministic replies + safety run **first**, no network needed |
-| Heavy WebGL orb that sometimes failed to render | `ogl` shader, GPU-dependent | A lightweight pure-CSS "breathing" orb |
-| Duplicate DB connection files | Copy-paste drift | One `config/db.js` |
+The server and model service agree on a versioned response contract
+(`contract.js` / `contract.py`, currently **1.1.0**): one shared vocabulary
+(`Low` / `Medium` / `High`), one `/analyze` endpoint, and a self-reported
+`model_mode` so the UI can honestly say which engine produced a result.
 
-### The headline bug (fixed)
+## Features
 
-```
-model output:  "Medium"
-CheckIn enum:  ["Low", "Moderate", "High"]   ← "Medium" not allowed
-result:        ValidationError on save
-```
-
-Valid predictions were being thrown away. Now every layer speaks the same
-vocabulary, and there is a test named
-`test_moderate_becomes_medium_not_a_crash` guarding the exact collision.
-
----
+- Account auth with JWT and bcrypt-hashed passwords; protected routes end to end.
+- Chat sessions with per-message stress and emotion analysis shown as pills.
+- Quick check-ins stored with level, emotion, confidence, and model mode.
+- Insights page: aggregate stress counts and recent check-in history per user.
+- Crisis safety layer runs on raw text **before** any model or LLM call;
+  matched text returns a fixed helpline response (Tele-MANAS `14416`), never
+  a generated one.
+- Two analysis modes behind one interface: a deterministic `rules_only`
+  engine (zero ML dependencies, boots instantly) and a fine-tuned BERT
+  transformer (`ganeshtk/silentstress-model`) for emotion and stress
+  classification.
+- Optional reply-wording layer via Groq (Llama 3.1), with deterministic
+  fallback replies when it is not configured.
+- Versioned API contract between server and model service.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  B[Browser<br/>React + Vite] -->|/api/*| S[Express API<br/>:5000]
-  S -->|mongoose| M[(MongoDB)]
-  S -->|POST /analyze| P[FastAPI model-service<br/>:8000]
-  P --> C{ENABLE_HF_MODELS}
-  C -->|true| T[HF transformer<br/>ganeshtk/silentstress-model]
-  C -->|false| R[rules_only engine]
-  P --> SAFE[Safety layer<br/>runs FIRST, always]
+  C[React SPA<br/>Vercel] -->|/api/*| S[Express API<br/>Vercel serverless]
+  S -->|mongoose| D[(MongoDB Atlas)]
+  S -->|POST /analyze| P[FastAPI model service<br/>Modal]
+  P --> T[BERT stress model<br/>or rules_only]
+  P --> G[Groq LLM<br/>reply wording]
+  P --> SAFE[Safety layer<br/>runs first, always]
 ```
 
-Three services, one job each:
+| Layer | What runs where |
+| --- | --- |
+| Frontend | Vite build served by Vercel (`client/`) |
+| Backend / API | Express on Vercel serverless, entry `server/api/index.js` |
+| ML service | FastAPI on Modal (`model-service/modal_app.py`) |
+| Database | MongoDB Atlas |
+| Auth | JWT signed by the server, verified by `server/middleware/auth.js` |
 
-- **`client/`** — React 18 + Vite. Talks only to the API.
-- **`server/`** — Express + Mongoose. Auth, chat, check-ins, persistence. It is
-  the **only** thing that touches the database.
-- **`model-service/`** — FastAPI. Text in, structured analysis out. It knows
-  nothing about users or the database.
+Safety is duplicated on purpose: `model-service/safety.py` and
+`server/utils/safety.js` both detect crisis text, so the server's own
+fallback still returns the helpline even if the model service is unreachable.
 
-The server talks to the model-service by URL. The model-service could be a
-remote API, a GPU box, or a local process — the server doesn't care.
-
----
-
-## The contract (the most important idea in this repo)
-
-Every layer agrees on one shape:
-
-```json
-{
-  "contract_version": "1.0.0",
-  "model_mode": "rules_only",
-  "is_safety_override": false,
-  "stress_level": "Medium",
-  "confidence": 0.62,
-  "dominant_emotion": "sadness",
-  "strategy": "empathetic_probe",
-  "reply": "Thank you for sharing that honestly...",
-  "emotions": { "joy": 0.05, "sadness": 0.4, "...": 0.2 }
-}
-```
-
-`contract_version` is not decoration. When you change the shape, bump it — old
-clients can then detect the change instead of silently misreading fields.
-
-`model_mode` is self-describing. The UI can honestly say "using the fallback
-engine" instead of pretending everything is the neural model.
-
-`strategy` decouples *what the model found* from *what the product does*:
-
-| strategy | when | product behavior |
-| --- | --- | --- |
-| `crisis_override` | safety layer matched | show helpline, never improvise |
-| `deep_support` | High stress | validate, ask what's heaviest |
-| `calm_validation` | Medium + anger | acknowledge the frustration |
-| `empathetic_probe` | Medium | gentle open question |
-| `light_checkin` | Low | light, forward-looking |
-
----
-
-## Safety is layered and runs first
-
-Safety is the one thing that must never depend on a model, an LLM, or the
-network. So it runs on **raw text, before anything else**, in two places:
-
-- `model-service/safety.py`
-- `server/utils/safety.js`
-
-Yes, that is deliberate duplication. If the model-service is down, the server's
-own fallback still detects crisis text and returns the helpline. Safety is not
-allowed to have a single point of failure.
-
-When crisis is detected:
-
-- `is_safety_override` becomes `true`
-- `stress_level` is forced to `High`
-- the reply is a **constant** (`CRISIS_RESPONSE`) pointing to Tele-MANAS
-  `14416` / `1-800-891-4416`
-
-It is never generated, so it can never drift or hallucinate.
-
-> ⚠️ This is a student project and a demo of engineering, **not** a medical
+> Ayasa is a student project and a software-engineering demo, not a medical
 > device. It does not diagnose anything.
 
----
+## Tech Stack
 
-## Run it
+| Area | Used |
+| --- | --- |
+| Frontend | React 18, Vite 5, React Router 6 |
+| Backend | Node.js, Express 4, Mongoose 8, JWT, bcryptjs |
+| ML service | Python, FastAPI, PyTorch, Transformers (BERT) |
+| LLM replies | Groq API (Llama 3.1), optional |
+| Database | MongoDB Atlas |
+| Deployment | Vercel (client + server), Modal (ML service), Docker Compose (local) |
+| Testing | `node --test` (server), pytest (model service) |
+
+## Project Structure
+
+```
+ayasa/
+├── client/                 # React 18 + Vite SPA
+│   └── src/
+│       ├── api.js          # single fetch helper
+│       ├── auth.jsx        # auth context
+│       ├── pages/          # Landing, Login, Register, Chat, Insights
+│       └── components/     # Layout, RequireAuth, StressPill
+├── server/                 # Express API
+│   ├── api/index.js        # Vercel serverless entrypoint
+│   ├── config/db.js        # the one DB connection
+│   ├── contract.js         # mirrors contract.py
+│   ├── middleware/auth.js  # JWT verification
+│   ├── models/             # User, Session, Message, CheckIn
+│   ├── controllers/        # auth, sessions, check-ins
+│   ├── routes/             # /api/auth, /api/sessions, /api/checkins
+│   ├── utils/              # safety.js, modelClient.js, http.js
+│   └── tests/
+├── model-service/          # FastAPI ML boundary
+│   ├── contract.py         # single source of truth for the vocabulary
+│   ├── safety.py           # crisis detection (runs first)
+│   ├── schemas.py          # request/response contract
+│   ├── model.py            # transformer OR rules_only, same output
+│   ├── llm.py              # Groq reply layer
+│   ├── main.py             # /health, /version, /analyze
+│   ├── modal_app.py        # Modal deployment definition
+│   └── tests/
+├── docs/screenshots/
+└── docker-compose.yml      # local stack: mongo + model + server + client
+```
+
+## Running Locally
 
 ### Option A — Docker (one command)
 
@@ -142,131 +128,70 @@ It is never generated, so it can never drift or hallucinate.
 docker compose up --build
 ```
 
-Then open <http://localhost:5173>.
+Open <http://localhost:5173>. The transformer model is off by default so the
+stack boots fast and deterministically. To load it, set `ENABLE_HF_MODELS=true`
+(and `HF_TOKEN` only if the model repo is private) in your environment before
+running compose.
 
-The HF model is **off by default** so it starts fast. To load it:
-
-```bash
-ENABLE_HF_MODELS=true HF_TOKEN=hf_xxx docker compose up --build
-```
-
-> If `5000` or `8000` are already used on your machine (macOS AirPlay often
-> takes 5000), change the left-hand side of the port mappings in
-> `docker-compose.yml`, e.g. `"5050:5000"`.
-
-### Option B — local, three terminals
-
-Use Python **3.12** (3.13+ has no PyTorch wheels for older Macs).
+### Option B — three terminals
 
 ```bash
-# 1. Database
+# 1. Database (or point MONGODB_URI at your own Atlas cluster)
 docker run -d --name ayasa-mongo -p 27017:27017 mongo:7
 
 # 2. Model service
 cd model-service
-/usr/local/bin/python3.12 -m venv .venv
+python -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ENABLE_HF_MODELS=false .venv/bin/python -m uvicorn main:app --port 8000
 
 # 3. API server
 cd server
 npm install
-MONGODB_URI="mongodb://127.0.0.1:27017/ayasa" \
-MODEL_SERVICE_URL="http://127.0.0.1:8000" \
-JWT_SECRET="dev-secret" \
+cp .env.example .env   # then fill in MONGODB_URI, JWT_SECRET, MODEL_SERVICE_URL
 npm run dev
 
 # 4. Client
 cd client
 npm install
-npm run dev
+npm run dev            # dev server proxies /api to http://localhost:5000
 ```
 
-To use your actual model, add the ML dependencies and flip the flag:
+Environment variables (see each service's `.env.example`):
+
+| Service | Variables |
+| --- | --- |
+| server | `PORT`, `MONGODB_URI`, `JWT_SECRET`, `MODEL_SERVICE_URL`, `MODEL_TIMEOUT_MS`, `CLIENT_ORIGIN`, `GROQ_API_KEY` (optional) |
+| model-service | `ENABLE_HF_MODELS`, `STRESS_MODEL_NAME`, `STRESS_MODEL_SUBFOLDER`, `HF_TOKEN` (optional), `GROQ_API_KEY` (optional), `GROQ_MODEL` |
+| client | `VITE_API_URL` (empty in dev; set to the deployed API URL in production) |
+
+### Tests
 
 ```bash
-.venv/bin/pip install -r requirements-ml.txt
-ENABLE_HF_MODELS=true STRESS_MODEL_NAME=ganeshtk/silentstress-model \
-  .venv/bin/python -m uvicorn main:app --port 8000
-```
-
----
-
-## Tests
-
-```bash
-cd model-service && .venv/bin/python -m pytest -q   # 23 tests
 cd server        && npm test                        # 12 tests
+cd model-service && .venv/bin/python -m pytest -q   # 23 tests
 cd client        && npm run build                   # build check
 ```
 
-The tests deliberately lock in the two things that used to be wrong:
+## API
 
-- `test_moderate_becomes_medium_not_a_crash` — the vocabulary collision
-- `test_mild_hedged_worry_is_not_high` — calibration (see below)
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/auth/register` | Create account |
+| `POST` | `/api/auth/login` | Get JWT |
+| `GET` | `/api/auth/me` | Current user |
+| `GET` / `POST` | `/api/sessions` | List / create chat sessions |
+| `GET` / `POST` | `/api/sessions/:id/messages` | Read / append messages |
+| `GET` / `POST` | `/api/checkins` | List / create check-ins |
+| `GET` | `/api/checkins/insights` | Aggregate stress counts + recent entries |
+| `GET` | `/api/health` | API and model-service reachability |
 
----
+The model service exposes `GET /health`, `GET /version`, and `POST /analyze`.
+`/analyze` returns the versioned analysis object (`stress_level`, `confidence`,
+`dominant_emotion`, `strategy`, `reply`, `model_mode`, `is_safety_override`).
 
-## Calibration: why the fallback still matters
+## Screenshots
 
-Even without the neural model, the rules engine tries to be *reasonable*:
-
-```
-Low    0.85   "Calm day, slept well and studied."
-Medium 0.48   "A bit overwhelmed with exams but I am managing."
-Medium 0.67   "Exams are stressing me out and I cannot sleep."
-High   0.67   "I feel completely hopeless."
-High   0.81   "I am so exhausted and lonely, I have been crying all week."
-```
-
-Two design choices make this work:
-
-1. **Cue severity** — "hopeless" (severe) is stronger than "overwhelmed"
-   (moderate). One moderate word should not max out the alarm.
-2. **Softening** — hedges ("a bit") and recovery clauses ("but I am managing")
-   *multiply* the pressure down, floored at `0.35`. That floor matters: never
-   fully erase a concern the person actually named. False alarms are how a
-   wellbeing app loses trust.
-
----
-
-## Project layout
-
-```
-ayasa/
-├── docker-compose.yml
-├── model-service/          # Python, the model boundary
-│   ├── contract.py         # single source of truth for the vocabulary
-│   ├── safety.py           # crisis detection (runs first)
-│   ├── schemas.py          # the request/response contract
-│   ├── model.py            # transformer OR rules_only, same output
-│   └── main.py             # FastAPI: /health, /version, /analyze
-├── server/                 # Node, the product boundary
-│   ├── contract.js         # mirrors contract.py
-│   ├── utils/safety.js     # mirrors safety.py (on purpose)
-│   ├── utils/modelClient.js# resilient client, never throws
-│   ├── models/             # User, Session, Message, CheckIn
-│   └── controllers/        # auth, sessions, check-ins
-└── client/                 # React
-    ├── src/api.js          # one fetch helper
-    ├── src/auth.jsx        # auth context
-    ├── src/pages/          # Landing, Login, Register, Chat, Insights
-    └── src/components/     # Orb, StressPill, Layout, RequireAuth
-```
-
-## Deliberately left out
-
-Next.js, WebGL, continual learning, dashboards, microservices, a vector DB.
-Every one of those is a thing to add *after* the simple version works.
-
-## Deploying from another computer
-
-Use three deployments with one responsibility each:
-
-1. **Client on Vercel:** import this repository with project root `client`, use the Vite preset, and set `VITE_API_URL` to the deployed server URL.
-2. **Server on Vercel:** create a second Vercel project with project root `server`. Set `MONGODB_URI` to a MongoDB Atlas connection string, a long random `JWT_SECRET`, `MODEL_SERVICE_URL` to the public model-service URL, `MODEL_TIMEOUT_MS=8000`, and `CLIENT_ORIGIN` to the client URL. The Vercel entrypoint is already in `server/api/index.js`.
-3. **Model service on an always-on Docker host:** deploy `model-service/Dockerfile.fat` on Render, Railway, or Koyeb. Set `ENABLE_HF_MODELS=true`, `GROQ_API_KEY`, and optionally `HF_TOKEN`; the Hugging Face models are public, so `HF_TOKEN` is normally unnecessary. Do not deploy this service to Vercel because transformer dependencies and cold starts exceed serverless limits.
-
-Create MongoDB Atlas before deploying the server and allow the hosting provider's connections. Add secrets only in each provider's environment-variable UI; never commit `.env` files. Revoke and regenerate the HF and Groq keys previously shared in chat before production use.
-
-From a fresh checkout, run `npm install` in `client` and `server`, then `npm run build` in `client`, `npm test` in `server`, and `python3.12 -m pytest` in `model-service`.
+| Landing page | A real check-in: stress and emotion pills, honest "estimate" footer |
+| --- | --- |
+| ![Landing](docs/screenshots/landing.png) | ![Chat](docs/screenshots/chat.png) |

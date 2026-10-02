@@ -1,131 +1,91 @@
-# AYASA Deployment Guide
+# Ayasa Deployment Guide
 
-This guide reflects the current low-change deployment plan:
+Ayasa is deployed as three independent services:
 
-- Client: Vercel
-- API server: Cloud Run or Railway container service
-- ML backend: Cloud Run container service
-- Database: MongoDB Atlas
+| Service | Platform | Repo path | Public URL |
+| --- | --- | --- | --- |
+| Client (React SPA) | Vercel | `client/` | https://ayasa-client.vercel.app |
+| API server (Express) | Vercel (serverless) | `server/` | https://ayasa-server.vercel.app |
+| Model service (FastAPI) | Modal | `model-service/` | https://ganeshtejaskunta--ayasa-model-service-web.modal.run |
 
-## 1. Client on Vercel
+Database: MongoDB Atlas.
 
-Deploy the `client/` folder as a Vercel project.
+## 1. MongoDB Atlas
 
-Recommended project settings:
+1. Create a cluster (free tier is enough) and a database user.
+2. Copy the connection string.
+3. In **Network Access**, allow your hosting provider's IPs. Vercel's outbound
+   addresses change per deployment, so the simplest options are Vercel's
+   official Atlas integration or an open CIDR (`0.0.0.0/0`) while the
+   credentials themselves stay secret.
 
-- Root directory: `client`
-- Build command: `npm run build`
-- Output directory: `build`
-- Install command: default Vercel install
+## 2. Model service on Modal
 
-Environment variables:
+The model service needs a persistent container with the transformer stack,
+which exceeds serverless limits — so it runs on Modal, defined in
+`model-service/modal_app.py`.
 
-- `REACT_APP_API_URL=https://YOUR_API_SERVICE_URL`
+```bash
+cd model-service
+python -m venv .venv
+.venv/bin/pip install -r requirements.txt   # includes modal
+modal deploy modal_app.py
+```
 
-Example:
+Set the app's secrets (`GROQ_API_KEY`, `HF_TOKEN` if needed) in the Modal
+dashboard. The web endpoint is created automatically by the `@modal.asgi_app()`
+function; note its URL for the server's `MODEL_SERVICE_URL`.
 
-- `REACT_APP_API_URL=https://ayasa-server-xxxxxx.a.run.app`
+Health check: `GET {MODEL_SERVICE_URL}/health`.
 
-Notes:
+## 3. API server on Vercel
 
-- The React app accepts either a full URL or a bare hostname.
-- The SPA rewrite is already in `client/vercel.json`.
+1. Import this repository as a Vercel project with root directory `server`.
+2. Framework preset: **Other**. Build command: none. Output directory: none.
+   The serverless entrypoint is `server/api/index.js` (already configured in
+   `server/vercel.json`).
+3. Set `Max Duration` to 30s (chat requests call the model service).
 
-## 2. API Server on Cloud Run
+Environment variables (production):
 
-Deploy the `server/` folder as a container service using `server/Dockerfile`.
+| Variable | Value |
+| --- | --- |
+| `MONGODB_URI` | Atlas connection string |
+| `JWT_SECRET` | long random string |
+| `MODEL_SERVICE_URL` | the Modal endpoint URL from step 2 |
+| `MODEL_TIMEOUT_MS` | `8000` |
+| `CLIENT_ORIGIN` | `https://ayasa-client.vercel.app` |
+| `GROQ_API_KEY` | optional — reply wording layer only |
 
-Recommended runtime settings:
+> `CLIENT_ORIGIN` must contain no trailing whitespace or newline characters:
+> a stray `\r` in a CORS header value makes Node throw `ERR_INVALID_CHAR` on
+> every response. The code trims it defensively, but clean env values are the
+> real fix.
 
-- Container port: handled by the Dockerfile and `PORT`
-- Memory: 512 MiB minimum, 1 GiB preferred
-- CPU: 1 vCPU
-- Public access: enabled for the browser client
+Health check: `GET https://ayasa-server.vercel.app/api/health` should return
+`{ "status": "ok", ... }` with the model service reported as reachable.
 
-Environment variables:
+## 4. Client on Vercel
 
-- `NODE_ENV=production`
-- `MONGODB_URI=mongodb+srv://...`
-- `JWT_SECRET=your-long-random-secret`
-- `ML_BACKEND_URL=https://YOUR_ML_SERVICE_URL`
-- `RUNTIME_SYNC_TOKEN=same-token-used-by-ml-backend`
+1. Import this repository as a second Vercel project with root directory
+   `client`.
+2. Framework preset: **Vite**. Build command: `npm run build`. Output: `dist`.
+3. Environment variable: `VITE_API_URL=https://ayasa-server.vercel.app`.
 
-Example:
+`VITE_API_URL` is inlined at build time, so it must be set **before** the
+deployment builds. The SPA fallback rewrite is configured in
+`client/vercel.json`.
 
-- `ML_BACKEND_URL=https://ayasa-ml-backend-xxxxxx.a.run.app`
+## 5. Verification checklist
 
-## 3. ML Backend on Cloud Run
+- [ ] `GET {server}/api/health` returns ok with `model.reachable: true`
+- [ ] Register a new account on the live client (catches DB/allowlist issues)
+- [ ] Log in, send a chat message, see a reply with stress/emotion pills
+- [ ] Post a check-in and confirm it appears on the Insights page
+- [ ] Send crisis text and confirm the fixed helpline response
 
-Deploy the `ml-backend/` folder as a container service using `ml-backend/Dockerfile`.
+## 6. Local development
 
-Recommended runtime settings:
-
-- Container port: handled by the Dockerfile and `PORT`
-- Memory: 512 MiB minimum for heuristic mode, 1 GiB safer
-- CPU: 1 vCPU
-- Public access: enabled so the API server can call it
-
-Environment variables:
-
-- `GROQ_API_KEY=your_groq_api_key`
-- `GROQ_MODEL=llama-3.1-8b-instant`
-- `HF_TOKEN=your_huggingface_token`
-- `RUNTIME_SYNC_TOKEN=same-token-used-by-server`
-- `ENABLE_HF_MODELS=false`
-
-Notes:
-
-- `ENABLE_HF_MODELS=false` keeps startup lightweight and avoids the old memory issue.
-- Only set it to `true` if you intentionally want to load the heavier Hugging Face models.
-
-## 4. MongoDB Atlas
-
-Create or reuse one Atlas cluster and copy its connection string into the API server.
-
-Recommended database settings:
-
-- Database user with only the required privileges
-- Network access restricted to your cloud services if possible
-- Connection string stored only as a secret
-
-## 5. Required Secret Matching
-
-These values must match across services:
-
-- `RUNTIME_SYNC_TOKEN` on the API server
-- `RUNTIME_SYNC_TOKEN` on the ML backend
-
-These values must be kept secret:
-
-- `MONGODB_URI`
-- `JWT_SECRET`
-- `GROQ_API_KEY`
-- `HF_TOKEN`
-
-## 6. Suggested Deployment Order
-
-1. Deploy MongoDB Atlas and confirm the connection string works.
-2. Deploy the ML backend and copy its public URL.
-3. Deploy the API server with `ML_BACKEND_URL` pointing to the ML backend.
-4. Deploy the client with `REACT_APP_API_URL` pointing to the API server.
-5. Open the Vercel app and test login, chat, and check-in flows end to end.
-
-## 7. Example Cloud Run Flow
-
-If you deploy with container images, the flow is:
-
-1. Build and push the image from `server/`.
-2. Deploy the image as `ayasa-server`.
-3. Build and push the image from `ml-backend/`.
-4. Deploy the image as `ayasa-ml-backend`.
-5. Copy the generated URLs into the client and API env vars.
-
-## 8. Quick Verification Checklist
-
-- Client loads on Vercel
-- Login and register work
-- API health route responds
-- ML backend health route responds
-- Chat request reaches the API server
-- API server reaches the ML backend
-- MongoDB writes succeed
+Use `docker compose up --build` for the full stack, or the three-terminal
+flow in the repository README. Local runs do not need Modal — the FastAPI
+service starts in `rules_only` mode with zero ML dependencies.

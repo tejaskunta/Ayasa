@@ -11,11 +11,6 @@ anaconda/
 client/node_modules/
 client/build/
 server/node_modules/
-ml-backend/venv/
-ml-backend/.venv/
-ml-backend/outputs/
-ml-backend/stress_model/
-ml-backend/Complete_StressModel/
 *.safetensors
 *.pt
 *.pth

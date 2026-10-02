@@ -1,5 +1,0 @@
-transformers
-torch
-numpy
-scikit-learn
-joblib
