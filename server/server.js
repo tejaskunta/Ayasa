@@ -17,7 +17,10 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/ayasa'
 
 function createApp() {
   const app = express();
-  app.use(cors({ origin: process.env.CLIENT_ORIGIN || true }));
+  // trim(): a stray \r or \n in this value makes Node throw ERR_INVALID_CHAR
+  // on every response header. Sanitize at the boundary, never trust env bytes.
+  const clientOrigin = String(process.env.CLIENT_ORIGIN || '').trim();
+  app.use(cors({ origin: clientOrigin || true }));
   app.use(express.json({ limit: '1mb' }));
 
   // Health check that also reports whether the model service is reachable.

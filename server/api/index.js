@@ -19,7 +19,8 @@ module.exports = async (req, res) => {
     if (req.url.startsWith(HEALTH_PATH)) {
       const model = await require('../utils/modelClient').health();
       // This response skips Express' cors middleware, so set the header here.
-      res.setHeader('Access-Control-Allow-Origin', process.env.CLIENT_ORIGIN || '*');
+      // Trim defensively: a stray \r in the env value throws ERR_INVALID_CHAR.
+      res.setHeader('Access-Control-Allow-Origin', String(process.env.CLIENT_ORIGIN || '').trim() || '*');
       return res.json({ status: 'ok', model, database: dbHealth() });
     }
     return app(req, res);
