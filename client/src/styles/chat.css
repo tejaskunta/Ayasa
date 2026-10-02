@@ -4,11 +4,16 @@
   gap: 16px;
 }
 
-.chat-list {
+/* Alden: the thread is a parchment stage. White turns read against the cream
+   tone, so elevation comes from surface contrast — never a shadow. */
+.thread {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  min-height: 260px;
+  min-height: 320px;
+  background: var(--bg-soft);
+  border-radius: var(--radius);
+  padding: 24px;
 }
 
 .turn {
@@ -17,7 +22,6 @@
   padding: 14px 18px;
   line-height: 1.5;
   letter-spacing: -0.01em;
-  border: 1px solid var(--border);
   animation: turn-in 0.25s ease-out;
 }
 
@@ -26,7 +30,6 @@
   align-self: flex-end;
   background: var(--accent);
   color: var(--ink);
-  border-color: transparent;
   border-bottom-right-radius: var(--radius-sm);
 }
 
@@ -34,28 +37,55 @@
   align-self: flex-start;
   background: var(--surface);
   color: var(--ink);
+  border: 1px solid var(--border);
   border-bottom-left-radius: var(--radius-sm);
 }
 
-/* Crisis turns are visually unmistakable, not hidden in a tooltip:
-   full danger-colored border + tinted ground, no side-tab stripe. */
+/* The reading belongs beside the message, not painted over it: the sage
+   bubble stays one flat color. */
+.turn-row {
+  align-self: flex-end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: min(78%, 520px);
+}
+
+.turn-row .turn {
+  max-width: 100%;
+}
+
+.turn-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Crisis is unmistakable, and it is the reply that carries the safety
+   content — the user's own message keeps its plain sage bubble. */
 .turn-crisis {
   background: var(--danger-bg);
   border-color: var(--level-high);
 }
 
-.turn-crisis .turn-label {
+.turn-label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 0.74rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--level-high);
+}
+
+.turn-crisis .turn-label {
   margin-bottom: 6px;
 }
 
-.turn-crisis .turn-label::before {
+.turn-label::before {
   content: '';
   width: 7px;
   height: 7px;
@@ -63,12 +93,41 @@
   background: var(--level-high);
 }
 
-.turn-meta {
+/* First-run state: the empty box is the hardest moment in a check-in. */
+.empty {
+  margin: auto;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 16px;
+  padding: 32px 0;
+  text-align: center;
+  max-width: 440px;
+}
+
+.chips {
+  display: flex;
   flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.chip {
+  font: inherit;
+  font-size: 0.88rem;
+  letter-spacing: -0.01em;
+  color: var(--ink-soft);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.chip:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--border-strong);
 }
 
 .composer {
@@ -132,8 +191,10 @@
   border: 1px solid var(--danger-border);
   background: var(--danger-bg);
   border-radius: var(--radius);
-  padding: 14px 16px;
+  padding: 16px 20px;
   font-size: 0.92rem;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
 }
 
 .safety-banner strong {

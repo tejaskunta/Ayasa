@@ -307,7 +307,7 @@ textarea:focus {
   border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   color: var(--ink-soft);
-  background: var(--bg-soft);
+  background: var(--surface);
 }
 
 .pill-low {

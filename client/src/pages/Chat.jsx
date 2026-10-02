@@ -10,9 +10,26 @@ import '../styles/chat.css';
  *  1. on mount, list sessions; create one if the user has none
  *  2. load that session's messages
  *  3. sending: optimistic user bubble -> POST -> replace with server truth
- *  4. crisis: the bot turn is rendered with a distinct style AND a safety
- *     banner, so it is impossible to miss
+ *  4. crisis: the safety *reply* carries the crisis style + label, and a
+ *     banner repeats the helplines at the top of the thread
+ *
+ * Layout notes (Alden): the thread is a parchment stage, so white bot cards
+ * read as surfaces without shadows. The user's analysis pills sit beside
+ * their sage bubble, never painted over it.
  */
+
+const STARTERS = [
+  'Today has been a lot.',
+  "I can't switch my brain off.",
+  'I want to reflect on my week.',
+];
+
+/** "rules_only" is dev-speak; the footer should say who did the reading. */
+function modeNote(mode) {
+  if (mode === 'transformer') return 'Language-model estimate';
+  return "Built-in reader's estimate";
+}
+
 export default function Chat() {
   const [sessionId, setSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -20,7 +37,8 @@ export default function Chat() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [lastAnalysis, setLastAnalysis] = useState(null);
-  const listRef = useRef(null);
+  const endRef = useRef(null);
+  const composerRef = useRef(null);
 
   // --- boot: ensure a session + load its messages --------------------------
   useEffect(() => {
@@ -46,10 +64,19 @@ export default function Chat() {
     };
   }, []);
 
-  // Keep the newest turn in view.
+  // Keep the newest turn in view (respecting reduced-motion).
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
+    const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    endRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'nearest' });
   }, [messages, busy]);
+
+  // Grow the composer with its content, up to the CSS max-height.
+  useEffect(() => {
+    const ta = composerRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = `${ta.scrollHeight}px`;
+  }, [text]);
 
   const send = async (e) => {
     e.preventDefault();
@@ -88,6 +115,25 @@ export default function Chat() {
     }
   };
 
+  /** A fresh session = a clean page. Old conversations stay in the history. */
+  const startFresh = async () => {
+    if (busy) return;
+    try {
+      const created = await api.createSession();
+      setSessionId(created.session._id);
+      setMessages([]);
+      setLastAnalysis(null);
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const useStarter = (starter) => {
+    setText(starter);
+    composerRef.current?.focus();
+  };
+
   return (
     <div className="container" style={{ paddingInline: 0 }}>
       <div className="row" style={{ marginBottom: 20 }}>
@@ -97,6 +143,15 @@ export default function Chat() {
             Share as much or as little as you like.
           </p>
         </div>
+        <span className="spacer" />
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={startFresh}
+          disabled={busy || messages.length === 0}
+        >
+          New conversation
+        </button>
       </div>
 
       {lastAnalysis?.wasCrisis && (
@@ -113,42 +168,64 @@ export default function Chat() {
       )}
 
       <div className="chat">
-        <div className="chat-list" ref={listRef}>
+        <div className="thread">
           {messages.length === 0 && !busy && (
-            <p className="muted faint">No messages yet. Say anything to begin.</p>
+            <div className="empty">
+              <p className="muted" style={{ margin: 0 }}>
+                This is your space. Start wherever you are.
+              </p>
+              <div className="chips">
+                {STARTERS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className="chip"
+                    onClick={() => useStarter(s)}
+                    disabled={!sessionId}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
 
-          {messages.map((m) => (
-            <div
-              key={m._id}
-              className={[
-                'turn',
-                m.sender === 'user' ? 'turn-user' : 'turn-bot',
-                m.wasCrisis ? 'turn-crisis' : '',
-              ].join(' ')}
-            >
-              {m.wasCrisis && (
-                <span className="turn-label">Safety moment</span>
-              )}
-              <div>{m.text}</div>
-              {m.sender === 'user' && (m.stressLevel || m.emotion) && (
-                <div className="turn-meta">
-                  <StressPill level={m.stressLevel} />
-                  <EmotionPill emotion={m.emotion} />
-                </div>
-              )}
-            </div>
-          ))}
+          {messages.map((m) =>
+            m.sender === 'user' ? (
+              <div key={m._id} className="turn-row">
+                <div className="turn turn-user">{m.text}</div>
+                {(m.stressLevel || m.emotion) && (
+                  <div className="turn-meta">
+                    <StressPill level={m.stressLevel} />
+                    <EmotionPill emotion={m.emotion} />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div
+                key={m._id}
+                className={['turn', 'turn-bot', m.wasCrisis ? 'turn-crisis' : ''].join(' ')}
+              >
+                {m.wasCrisis && <span className="turn-label">A note on safety</span>}
+                {m.text}
+              </div>
+            ),
+          )}
+
+          <div className="sr-only" aria-live="polite">
+            {busy ? 'Ayasa is thinking' : ''}
+          </div>
 
           {busy && (
             <div className="turn turn-bot">
-              <span className="typing" aria-label="Ayasa is thinking">
+              <span className="typing" aria-hidden="true">
                 <span />
                 <span />
                 <span />
               </span>
             </div>
           )}
+          <div ref={endRef} />
         </div>
 
         <form className="composer" onSubmit={send}>
@@ -157,6 +234,7 @@ export default function Chat() {
           </label>
           <textarea
             id="msg"
+            ref={composerRef}
             value={text}
             placeholder="Type how you're feeling…"
             onChange={(e) => setText(e.target.value)}
@@ -176,11 +254,8 @@ export default function Chat() {
 
       {lastAnalysis && (
         <p className="faint" style={{ marginTop: 14 }}>
-          Estimated in <strong>{lastAnalysis.modelMode}</strong> mode
-          {lastAnalysis.confidence != null
-            ? ` · confidence ${Math.round(lastAnalysis.confidence * 100)}%`
-            : ''}
-          {lastAnalysis.wasCrisis ? ' · safety override applied' : ''}
+          {modeNote(lastAnalysis.modelMode)}
+          {' · a supportive companion, not a diagnosis'}
         </p>
       )}
     </div>
