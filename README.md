@@ -9,6 +9,13 @@ ambitious and buggy. This one is deliberately small and boring in the places
 that matter, because a mental-health product has to be *trustworthy* before it
 is clever.
 
+> **Live:** <https://ayasa-client.vercel.app> — API on
+> <https://ayasa-server.vercel.app>, ML service on Modal.
+
+| The landing page — calm on purpose. | A real check-in: the BERT model classifies stress and emotion, the LLM replies, and the footer states honestly that it is an estimate. |
+| --- | --- |
+| ![Ayasa landing page](docs/screenshots/landing.png) | ![Ayasa chat with stress and emotion pills](docs/screenshots/chat.png) |
+
 ---
 
 ## Why it was rebuilt
