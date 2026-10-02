@@ -190,8 +190,3 @@ The model service exposes `GET /health`, `GET /version`, and `POST /analyze`.
 `/analyze` returns the versioned analysis object (`stress_level`, `confidence`,
 `dominant_emotion`, `strategy`, `reply`, `model_mode`, `is_safety_override`).
 
-## Screenshots
-
-| Landing page | A real check-in: stress and emotion pills, honest "estimate" footer |
-| --- | --- |
-| ![Landing](docs/screenshots/landing.png) | ![Chat](docs/screenshots/chat.png) |
