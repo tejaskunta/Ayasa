@@ -4,7 +4,9 @@ import { Link } from 'react-router-dom';
 export default function Landing() {
   return (
     <div style={{ textAlign: 'center', paddingTop: 32 }}>
-      <h1>A calm place to check in with yourself.</h1>
+      <h1>
+        A <span className="hl">calm</span> place to check in with yourself.
+      </h1>
       <p className="muted" style={{ maxWidth: 520, margin: '0 auto 28px', fontSize: '1.05rem' }}>
         Ayasa listens to how you are feeling, reflects it back gently, and keeps a
         private record so you can notice patterns over time.

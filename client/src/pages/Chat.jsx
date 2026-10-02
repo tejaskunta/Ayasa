@@ -127,6 +127,9 @@ export default function Chat() {
                 m.wasCrisis ? 'turn-crisis' : '',
               ].join(' ')}
             >
+              {m.wasCrisis && (
+                <span className="turn-label">Safety moment</span>
+              )}
               <div>{m.text}</div>
               {m.sender === 'user' && (m.stressLevel || m.emotion) && (
                 <div className="turn-meta">
@@ -149,7 +152,7 @@ export default function Chat() {
         </div>
 
         <form className="composer" onSubmit={send}>
-          <label htmlFor="msg" className="sr-only" style={{ display: 'none' }}>
+          <label htmlFor="msg" className="sr-only">
             Your message
           </label>
           <textarea

@@ -45,6 +45,11 @@ export default function Insights() {
 
   const counts = insights?.counts || { Low: 0, Medium: 0, High: 0 };
 
+  const when = (value) => {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
+  };
+
   return (
     <div className="stack" style={{ gap: 28 }}>
       <div>
@@ -56,7 +61,11 @@ export default function Insights() {
           </div>
         )}
         <form className="stack" onSubmit={submit}>
+          <label htmlFor="checkin" className="sr-only">
+            Your check-in
+          </label>
           <textarea
+            id="checkin"
             value={text}
             placeholder="How is today going?"
             onChange={(e) => setText(e.target.value)}
@@ -111,7 +120,7 @@ export default function Insights() {
                   <StressPill level={c.stressLevel} />
                 </div>
                 <div className="faint" style={{ marginTop: 6 }}>
-                  {new Date(c.createdAt).toLocaleString()}
+                  {when(c.createdAt)}
                 </div>
               </div>
             ))}

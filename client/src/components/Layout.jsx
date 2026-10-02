@@ -1,5 +1,8 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
+
+const navClass = ({ isActive }) =>
+  ['btn', 'btn-ghost', 'nav-link', isActive ? 'is-active' : ''].join(' ');
 
 /** Shared top bar. Shows the brand, nav, and a logout button when signed in. */
 export default function Layout({ children }) {
@@ -20,12 +23,12 @@ export default function Layout({ children }) {
         <span className="spacer" />
         {user ? (
           <div className="row">
-            <Link to="/app" className="btn btn-ghost">
+            <NavLink to="/app" end className={navClass}>
               Chat
-            </Link>
-            <Link to="/insights" className="btn btn-ghost">
+            </NavLink>
+            <NavLink to="/insights" className={navClass}>
               Insights
-            </Link>
+            </NavLink>
             <button className="btn btn-link" onClick={handleLogout}>
               Sign out
             </button>

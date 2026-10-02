@@ -9,36 +9,45 @@
 --------------------------------------------------------------------------- */
 
 :root {
-  /* Warm, calm neutrals — softer than pure white, easier on the eyes. */
-  --bg: #f7f5f1;
-  --bg-soft: #fffdfa;
+  /* Alden: 98% achromatic. Paper-white canvas, parchment cream as the only
+     second surface. Elevation comes from white-vs-cream contrast, never
+     shadows — the single structural line is a 1px fog hairline. */
+  --bg: #ffffff;
+  --bg-soft: #f3f1eb;
   --surface: #ffffff;
-  --border: #e6e1d8;
-  --border-strong: #d6cfc2;
+  --border: #dddcdd;
+  --border-strong: #cbcbcb;
 
-  /* Ink */
-  --ink: #1f2523;
-  --ink-soft: #55605c;
-  --ink-faint: #8b938f;
+  /* Ink — near-black with a faint plum undertone; faint clears 4.5:1 on
+     both white and parchment. */
+  --ink: #28262a;
+  --ink-soft: #4a4a4c;
+  --ink-faint: #6a6a6c;
 
-  /* Accent: muted sage / teal. Calm, not clinical, not purple. */
-  --accent: #3f6f63;
-  --accent-strong: #2f574e;
-  --accent-soft: #e4efe9;
+  /* Two chromatic roles only: sage is the single action fill, sky is an
+     in-heading annotation. sky-ink is the contrast-safe sibling used
+     wherever sky touches text (raw #97cde5 fails 4.5:1 on white). */
+  --accent: #c8dfaa;
+  --accent-strong: #b4d292;
+  --accent-soft: #eef4e4;
+  --sky: #97cde5;
+  --sky-ink: #38769d;
 
-  /* Stress-level colors (used consistently across chat + insights). */
-  --level-low: #4f8a5b;
-  --level-medium: #b9812f;
-  --level-high: #b4513f;
+  /* Stress-level colors (used consistently across chat + insights).
+     Functional data semantics, kept out of the chrome palette. */
+  --level-low: #3e6b47;
+  --level-medium: #8a5f1f;
+  --level-high: #a04632;
   --danger-bg: #fbf0ee;
   --danger-border: #e6c3bc;
 
-  --radius: 14px;
-  --radius-sm: 9px;
-  --shadow: 0 1px 2px rgba(31, 37, 35, 0.04), 0 8px 24px rgba(31, 37, 35, 0.06);
+  /* Alden radii: cards 16px, small UI 4px, buttons always full pills. */
+  --radius: 16px;
+  --radius-sm: 4px;
+  --radius-pill: 100px;
 
-  --font-body: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
-  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-body: 'Source Serif 4', ui-serif, Georgia, Cambria, 'Times New Roman', serif;
+  --font-ui: 'DM Sans', ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
 
   --maxw: 720px;
 }
@@ -59,28 +68,40 @@ body {
   color: var(--ink);
   font-family: var(--font-ui);
   font-size: 16px;
-  line-height: 1.6;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
 }
 
-h1,
-h2,
-h3 {
+/* Negative tracking is the system's signature. Serif is display-only (h1);
+   everything functional stays in the geometric sans. */
+h1 {
   font-family: var(--font-body);
-  font-weight: 600;
-  line-height: 1.2;
+  font-weight: 500;
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
   margin: 0 0 0.5em;
-  letter-spacing: -0.01em;
 }
 
-h1 {
-  font-size: clamp(2rem, 5vw, 2.9rem);
+h2,
+h3 {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.5em;
 }
 h2 {
   font-size: 1.5rem;
 }
 h3 {
-  font-size: 1.15rem;
+  font-size: 1.1rem;
+}
+
+/* Sky used like a highlighter on one chosen word inside a heading. */
+.hl {
+  color: var(--sky-ink);
 }
 
 p {
@@ -88,7 +109,7 @@ p {
 }
 
 a {
-  color: var(--accent-strong);
+  color: var(--sky-ink);
 }
 
 /* --- layout helpers ------------------------------------------------------- */
@@ -124,40 +145,36 @@ a {
 
 /* --- header --------------------------------------------------------------- */
 
+/* Alden nav: flat white bar — no border-bottom, no blur, no sticky. */
 .topbar {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 18px 24px;
-  border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg-soft) 80%, transparent);
-  backdrop-filter: blur(8px);
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  gap: 32px;
+  padding: 16px 24px;
+  background: var(--bg);
 }
 
 .brand {
-  font-family: var(--font-body);
-  font-size: 1.3rem;
-  font-weight: 600;
+  font-family: var(--font-ui);
+  font-size: 1.15rem;
+  font-weight: 500;
   letter-spacing: -0.02em;
   color: var(--ink);
   text-decoration: none;
 }
 
 .brand-dot {
-  color: var(--accent);
+  color: var(--sky);
 }
 
 /* --- cards ---------------------------------------------------------------- */
 
+/* No shadows anywhere — the white/cream tone shift is the only elevation. */
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 24px;
-  box-shadow: var(--shadow);
+  padding: 32px;
 }
 
 .card-soft {
@@ -166,14 +183,17 @@ a {
 
 /* --- buttons -------------------------------------------------------------- */
 
+/* Buttons are always full pills. Sage fill + ink text is the only saturated
+   element; ghost links carry no border or background. */
 .btn {
   font: inherit;
   font-weight: 500;
-  border-radius: var(--radius-sm);
+  letter-spacing: -0.01em;
+  border-radius: var(--radius-pill);
   border: 1px solid transparent;
-  padding: 11px 18px;
+  padding: 12px 20px;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
 }
 
 .btn:disabled {
@@ -183,7 +203,7 @@ a {
 
 .btn-primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--ink);
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-strong);
@@ -191,22 +211,26 @@ a {
 
 .btn-ghost {
   background: transparent;
-  border-color: var(--border-strong);
-  color: var(--ink);
+  color: var(--ink-soft);
 }
 .btn-ghost:hover:not(:disabled) {
-  background: var(--accent-soft);
-  border-color: var(--accent);
+  background: var(--bg-soft);
+  color: var(--ink);
 }
 
 .btn-link {
   background: none;
   border: none;
-  color: var(--accent-strong);
+  color: var(--ink-soft);
   padding: 0;
   cursor: pointer;
   font: inherit;
   text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 3px;
+}
+.btn-link:hover:not(:disabled) {
+  color: var(--ink);
 }
 
 /* --- forms ---------------------------------------------------------------- */
@@ -226,9 +250,10 @@ a {
 input,
 textarea {
   font: inherit;
+  letter-spacing: inherit;
   color: var(--ink);
   background: var(--surface);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
   width: 100%;
@@ -240,11 +265,17 @@ textarea {
   font-family: var(--font-ui);
 }
 
+input::placeholder,
+textarea::placeholder {
+  color: var(--ink-faint);
+  opacity: 1;
+}
+
 input:focus,
 textarea:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+  border-color: var(--sky-ink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sky) 35%, transparent);
 }
 
 /* --- messages / alerts ---------------------------------------------------- */
@@ -270,10 +301,11 @@ textarea:focus {
   align-items: center;
   gap: 6px;
   font-size: 0.78rem;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border-strong);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
   color: var(--ink-soft);
   background: var(--bg-soft);
 }
@@ -317,6 +349,41 @@ textarea:focus {
 
 /* Visible focus ring for keyboard users. */
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--sky-ink);
   outline-offset: 2px;
+}
+
+/* Screen-reader-only text: clipped, not display:none, so it stays in the
+   accessibility tree. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- browser surfaces themed from the palette ------------------------------ */
+
+::selection {
+  background: var(--sky);
+  color: var(--ink);
+}
+
+/* --- navigation ------------------------------------------------------------ */
+
+/* Alden active state is quiet: same ink, more weight, a sky underline. */
+.nav-link.is-active {
+  color: var(--ink);
+  font-weight: 600;
+  background: none;
+  border-color: transparent;
+  text-decoration: underline;
+  text-decoration-color: var(--sky);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 7px;
 }
