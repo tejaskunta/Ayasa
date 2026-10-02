@@ -10,7 +10,11 @@ async function connectDB(uri) {
   mongoose.set('strictQuery', true);
   if (mongoose.connection.readyState === 1) return mongoose.connection;
   if (!globalThis.__ayasaMongoConnection) {
-    globalThis.__ayasaMongoConnection = mongoose.connect(uri)
+    // Fail in ~10s instead of the 30s default: serverless functions have a
+    // 30s budget and a silent hang burns the whole of it.
+    globalThis.__ayasaMongoConnection = mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 10000,
+    })
       .then(() => mongoose.connection)
       .catch((error) => {
         globalThis.__ayasaMongoConnection = null;
