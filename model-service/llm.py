@@ -21,6 +21,9 @@ def generate_reply(text: str, analysis: dict[str, object]) -> str | None:
     if not api_key or analysis.get("is_safety_override"):
         return None
 
+    # Read at call time so a value set in .env (or changed) is honored even if
+    # this module was imported before load_dotenv(). Falls back to the constant.
+    model = os.getenv("GROQ_MODEL", GROQ_MODEL)
     strategy = str(analysis.get("strategy", "light_checkin"))
     stress_level = str(analysis.get("stress_level", "Medium"))
     prompt = (
@@ -35,7 +38,7 @@ def generate_reply(text: str, analysis: dict[str, object]) -> str | None:
             GROQ_URL,
             headers={"Authorization": f"Bearer {api_key}"},
             json={
-                "model": GROQ_MODEL,
+                "model": model,
                 "temperature": 0.4,
                 "max_tokens": 120,
                 "messages": [

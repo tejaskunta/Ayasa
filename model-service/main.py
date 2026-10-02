@@ -13,14 +13,19 @@ That dual-contract was a source of subtle bugs. One endpoint, one schema.
 from __future__ import annotations
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
-from contract import CONTRACT_VERSION, STRESS_LEVELS
-from model import MODEL_NAME, Analyzer
-from schemas import AnalyzeRequest, AnalyzeResponse, HealthResponse, VersionResponse
-
+# Load .env BEFORE importing modules that read env vars at import time.
+# llm.py captures GROQ_MODEL and model.py captures ENABLE_HF_MODELS /
+# STRESS_MODEL_NAME during import, so loading env after them silently keeps
+# the built-in defaults (this was the Groq-reply bug).
 load_dotenv()
+
+from fastapi import FastAPI  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+
+from contract import CONTRACT_VERSION, STRESS_LEVELS  # noqa: E402
+from model import MODEL_NAME, Analyzer  # noqa: E402
+from schemas import AnalyzeRequest, AnalyzeResponse, HealthResponse, VersionResponse  # noqa: E402
 
 app = FastAPI(title="Ayasa Model Service", version=CONTRACT_VERSION)
 app.add_middleware(

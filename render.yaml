@@ -1,74 +1,27 @@
+# Render blueprint — hosts ONLY the model-service (FastAPI).
+# The API server and client deploy on Vercel (see docs/DEPLOYMENT.md).
+#
+# Note on the image: BOTH Dockerfiles here currently install only the lean
+# requirements.txt. The torch stack lives in requirements-ml.txt (~2 GB) and is
+# optional — it will not fit Render's 512 MB free tier, so we run rules_only
+# analysis + Groq warmth, which is the verified production path. Dockerfile.fat
+# is referenced to match the deploy checklist; it is functionally identical today.
 services:
-  # ── Python ML Backend ──────────────────────────────────────────────────────
   - type: web
-    name: ayasa-ml-backend
-    runtime: python
+    name: ayasa-model-service
+    runtime: docker
     region: oregon
     plan: free
-    rootDir: ml-backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    rootDir: model-service
+    dockerfilePath: ./Dockerfile.fat
     healthCheckPath: /health
     envVars:
       - key: GROQ_API_KEY
-        sync: false          # set in Render dashboard
+        sync: false        # paste your (regenerated) Groq key in the dashboard
       - key: GROQ_MODEL
-        value: llama-3.1-8b-instant
-      - key: HF_TOKEN
-        sync: false
+        value: qwen/qwen3.8-27b   # repo default llama-3.1-8b-instant 404s on this account
       - key: ENABLE_HF_MODELS
-        value: false
-      - key: RUNTIME_SYNC_TOKEN
-        sync: false
-      - key: PORT
-        value: 8000
+        value: "false"
+      - key: HF_TOKEN
+        sync: false        # optional; only needed if ENABLE_HF_MODELS is ever true
 
-  # ── Node.js API Server ─────────────────────────────────────────────────────
-  - type: web
-    name: ayasa-server
-    runtime: node
-    region: oregon
-    plan: free
-    rootDir: server
-    buildCommand: npm install
-    startCommand: node server.js
-    healthCheckPath: /health
-    envVars:
-      - key: PORT
-        value: 5000
-      - key: NODE_ENV
-        value: production
-      - key: JWT_SECRET
-        sync: false          # set in Render dashboard
-      - key: MONGODB_URI
-        sync: false          # set in Render dashboard — use MongoDB Atlas free tier
-      - key: ML_BACKEND_URL
-        fromService:
-          name: ayasa-ml-backend
-          type: web
-          property: host
-          # Render auto-injects the ML service's public URL here
-      - key: RUNTIME_SYNC_TOKEN
-        sync: false
-
-  # ── React Static Site ──────────────────────────────────────────────────────
-  - type: web
-    name: ayasa-client
-    runtime: static
-    rootDir: client
-    buildCommand: npm install && npm run build
-    staticPublishPath: ./build
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: no-cache
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: REACT_APP_API_URL
-        fromService:
-          name: ayasa-server
-          type: web
-          property: host

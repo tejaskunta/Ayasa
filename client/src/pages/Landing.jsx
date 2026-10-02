@@ -1,14 +1,9 @@
 import { Link } from 'react-router-dom';
-import Orb from '../components/Orb.jsx';
 
 /** Public marketing page. Quiet, spacious, one clear action. */
 export default function Landing() {
   return (
     <div style={{ textAlign: 'center', paddingTop: 32 }}>
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
-        <Orb tone="calm" size={150} />
-      </div>
-
       <h1>A calm place to check in with yourself.</h1>
       <p className="muted" style={{ maxWidth: 520, margin: '0 auto 28px', fontSize: '1.05rem' }}>
         Ayasa listens to how you are feeling, reflects it back gently, and keeps a

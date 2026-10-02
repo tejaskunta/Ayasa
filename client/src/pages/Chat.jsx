@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
-import Orb from '../components/Orb.jsx';
 import StressPill, { EmotionPill } from '../components/StressPill.jsx';
 import '../styles/chat.css';
 
@@ -11,8 +10,8 @@ import '../styles/chat.css';
  *  1. on mount, list sessions; create one if the user has none
  *  2. load that session's messages
  *  3. sending: optimistic user bubble -> POST -> replace with server truth
- *  4. crisis: the bot turn is rendered with a distinct style AND the orb tone
- *     shifts, so safety is impossible to miss
+ *  4. crisis: the bot turn is rendered with a distinct style AND a safety
+ *     banner, so it is impossible to miss
  */
 export default function Chat() {
   const [sessionId, setSessionId] = useState(null);
@@ -89,18 +88,9 @@ export default function Chat() {
     }
   };
 
-  const orbTone = lastAnalysis
-    ? lastAnalysis.stressLevel === 'High'
-      ? 'high'
-      : lastAnalysis.stressLevel === 'Medium'
-        ? 'medium'
-        : 'calm'
-    : 'calm';
-
   return (
     <div className="container" style={{ paddingInline: 0 }}>
       <div className="row" style={{ marginBottom: 20 }}>
-        <Orb tone={orbTone} size={64} />
         <div>
           <h2 style={{ margin: 0 }}>How are you feeling?</h2>
           <p className="muted" style={{ margin: 0, fontSize: '0.92rem' }}>
